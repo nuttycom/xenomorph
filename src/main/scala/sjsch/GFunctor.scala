@@ -1,6 +1,7 @@
 package sjsch
 
 import scalaz.~>
+import scalaz.NaturalTransformation
 
 trait GFunctor[F[_[_], _]] {
   def gmap[M[_], N[_]](nt: M ~> N): F[M, ?] ~> F[N, ?]
@@ -14,14 +15,19 @@ object GFunctor {
   }
 }
 
-// A is the annotation type; X is the type argument to F that must be carried
-// through the tree.
-case class GCofree[F[_[_], _], A[_], I](head: A[I], tail: F[GCofree[F, A, ?], I]) {
-//  def gmap[G[_[_], _]](nt: F ~> N)(implicit G: GFunctor[F]): ({ type λ[α] = GCofree[F[M, α], α, A] })#λ ~> ({ type λ[α] = GCofree[F[M, α], α, A] })#λ = 
+case class GCofree[F[_[_], _], A[_], I](head: A[I], tail: F[GCofree[F, A, ?], I]) { 
+  def gmap[B[_]](nt: A ~> B)(implicit G: GFunctor[F]): GCofree[F, B, I] = {
+    ??? //GCofree(nt(head), G.gmap(GCofree.gnt[F, A, B](nt))(tail))
+  }
 }
 
 object GCofree {
   type GFix[F[_[_], _], A[_]] = GCofree[F, A, Unit]
+
+  def gnt[F[_[_], _]: GFunctor, A[_], B[_]](nt: A ~> B): GCofree[F, A, ?] ~> GCofree[F, B, ?] = 
+    new NaturalTransformation[GCofree[F, A, ?], GCofree[F, B, ?]] {
+      def apply[I](gcf: GCofree[F, A, I]) = gcf.gmap(nt)
+    }
 
 //  implicit def instances[F[_[_], _]: GFunctor, A] = new GFunctor[({ type λ[ƒ[_], α] = GCofree[F[ƒ, α], α, A] })#λ] {
 //    def gmap[M[_], N[_]](nt: M ~> N) = new NaturalTransformation[({ type λ[α] = GCofree[F[M, α], α, A] })#λ, ({ type λ[α] = GCofree[F[N, α], α, A] })#λ] {

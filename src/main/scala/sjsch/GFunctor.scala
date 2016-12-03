@@ -17,7 +17,7 @@ object GFunctor {
 
 case class GCofree[F[_[_], _], A[_], I](head: A[I], tail: F[GCofree[F, A, ?], I]) { 
   def gmap[B[_]](nt: A ~> B)(implicit G: GFunctor[F]): GCofree[F, B, I] = {
-    ??? //GCofree(nt(head), G.gmap(GCofree.gnt[F, A, B](nt))(tail))
+    GCofree(nt(head), G.gmap[GCofree[F, A, ?], GCofree[F, B, ?]](GCofree.gnt[F, A, B](nt))(tail))
   }
 }
 

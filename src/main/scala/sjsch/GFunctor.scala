@@ -1,7 +1,10 @@
 package sjsch
 
 import scalaz.~>
+import scalaz.Applicative
+import scalaz.Const
 import scalaz.NaturalTransformation
+import scalaz.syntax.applicative._
 
 trait GFunctor[F[_[_], _]] {
   def gmap[M[_], N[_]](nt: M ~> N): F[M, ?] ~> F[N, ?]
@@ -22,7 +25,9 @@ case class GCofree[F[_[_], _], A[_], I](head: A[I], tail: F[GCofree[F, A, ?], I]
 }
 
 object GCofree {
-  type GFix[F[_[_], _], A[_]] = GCofree[F, A, Unit]
+  type GFix[F[_[_], _], A] = GCofree[F, Const[Unit, ?], A]
+
+  def gfix[F[_[_], _], A](fga: F[GFix[F, ?], A]): GFix[F, A] = GCofree[F, Const[Unit, ?], A](Const(Unit), fga)
 
   def gnt[F[_[_], _]: GFunctor, A[_], B[_]](nt: A ~> B): GCofree[F, A, ?] ~> GCofree[F, B, ?] = 
     new NaturalTransformation[GCofree[F, A, ?], GCofree[F, B, ?]] {

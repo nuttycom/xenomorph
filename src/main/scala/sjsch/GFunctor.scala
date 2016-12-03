@@ -29,9 +29,7 @@ object GCofree {
       def apply[I](gcf: GCofree[F, A, I]) = gcf.gmap(nt)
     }
 
-//  implicit def instances[F[_[_], _]: GFunctor, A] = new GFunctor[({ type λ[ƒ[_], α] = GCofree[F[ƒ, α], α, A] })#λ] {
-//    def gmap[M[_], N[_]](nt: M ~> N) = new NaturalTransformation[({ type λ[α] = GCofree[F[M, α], α, A] })#λ, ({ type λ[α] = GCofree[F[N, α], α, A] })#λ] {
-//      def apply[A]
-//    }
-//  }
+  implicit def instances[F[_[_], _]: GFunctor]: GFunctor[GCofree[F, ?[_], ?]] = new GFunctor[GCofree[F, ?[_], ?]] {
+    def gmap[M[_], N[_]](nt: M ~> N): GCofree[F, M, ?] ~> GCofree[F, N, ?] = gnt(nt)
+  }
 }

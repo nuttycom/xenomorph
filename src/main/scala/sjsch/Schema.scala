@@ -13,6 +13,8 @@ import scalaz.std.anyVal._
 import GFunctor._
 
 object Schema {
+  import ParseSchema._
+
   /**
    * @param E The error type for parse failures. 
    * @param P The GADT type constructor for a sum type which defines the set of
@@ -77,18 +79,19 @@ case class OneOfSchema[E, P[_], F[_], A](alternatives: List[Alternative[F, A, B]
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A] = OneOfSchema(alternatives.map(_.gmap(nt)))
 }
 
-case class ParseSchema[E, P[_], F[_], A, B](base: F[A], f: A => ParseResult[E, A, B], g: B => A) extends SchemaF[E, P, F, B] {
+case class ParseSchema[E, P[_], F[_], A, B](base: F[A], f: A => ParseSchema.ParseResult[E, A, B], g: B => A) extends SchemaF[E, P, F, B] {
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, B] = ParseSchema(nt(base), f, g)
+}
+
+object ParseSchema {
+  sealed trait ParseResult[E, S, A]
+  case class PSuccess[E, S, A](a: A) extends ParseResult[E, S, A]
+  case class PFailure[E, S, A](e: E, s: S) extends ParseResult[E, S, A]
 }
 
 case class LazySchema[E, P[_], F[_], A](s: Need[F[A]]) extends SchemaF[E, P, F, A] {
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A] = LazySchema(s.map(nt))
 }
-
-
-sealed trait ParseResult[E, S, A]
-case class PSuccess[E, S, A](a: A) extends ParseResult[E, S, A]
-case class PFailure[E, S, A](e: E, s: S) extends ParseResult[E, S, A]
 
 case class Alternative[F[_], A, B](id: String, base: F[B], f: B => A, g: A => Option[B]) {
   def gmap[G[_]](nt: F ~> G): Alternative[G, A, B] = Alternative(id, nt(base), f, g)

@@ -15,7 +15,7 @@ import GFunctor._
 object Schema {
   /**
    * @param E The error type for parse failures. 
-   * @param P The GADT constructor of the sum type which defines the set of
+   * @param P The GADT type constructor for a sum type which defines the set of
    *        primitive types used in the schema. 
    * @param A The type of the Scala value to be produced (or consumed)
    *        by an interpreter of the schema.
@@ -30,9 +30,6 @@ object Schema {
   def prim[E, P[_], A](pa: P[A]): Schema[E, P, A] = 
     schema(PrimitiveSchema[E, P, Schema[E, P, ?], A](pa))
 
-  def const[E, P[_], A](a: A): Schema[E, P, A] = 
-    schema(ConstSchema[E, P, Schema[E, P, ?], A](a))
-
   def obj[E, P[_], A](builder: ObjectBuilder[E, P, A]): Schema[E, P, A] = 
     schema(ObjectSchema[E, P, Schema[E, P, ?], A](builder))
 
@@ -44,6 +41,9 @@ object Schema {
 
   def parser[E, P[_], A, B](base: Schema[E, P, A], f: A => ParseResult[E, A, B], g: B => A): Schema[E, P, B] =
     schema(ParseSchema[E, P, Schema[E, P, ?], A, B](base, f, g))
+
+  def iso[E, P[_], A, B](base: Schema[E, P, A], f: A => B, g: B => A): Schema[E, P, B] = 
+    parser(base, f.andThen(PSuccess[E, A, B](_)), g)
 
   def lazily[E, P[_], A](s: => Schema[E, P, A]): Schema[E, P, A] =
     schema(LazySchema[E, P, Schema[E, P, ?], A](Need(s)))
@@ -63,10 +63,6 @@ sealed trait SchemaF[E, P[_], F[_], A] {
 
 case class PrimitiveSchema[E, P[_], F[_], A](prim: P[A]) extends SchemaF[E, P, F, A] {
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A] = PrimitiveSchema(prim)
-}
-
-case class ConstSchema[E, P[_], F[_], A](a: A) extends SchemaF[E, P, F, A] {
-  def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A] = ConstSchema(a)
 }
 
 case class ObjectSchema[E, P[_], F[_], A](builder: FreeAp[PropSchema[A, F, ?], A]) extends SchemaF[E, P, F, A] {

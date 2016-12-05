@@ -79,37 +79,37 @@ object SchemaF {
     }
 }
 
-sealed trait SchemaF[E, P[_], F[_], A] {
+sealed abstract class SchemaF[E, P[_], F[_], A] {
   def map[E0](f: E => E0): SchemaF[E0, P, F, A]
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A]
   def pmap[Q[_]](nt: P ~> Q): SchemaF[E, Q, F, A]
 }
 
-case class PrimitiveSchema[E, P[_], F[_], A](prim: P[A]) extends SchemaF[E, P, F, A] {
+final case class PrimitiveSchema[E, P[_], F[_], A](prim: P[A]) extends SchemaF[E, P, F, A] {
   def map[E0](f: E => E0)    = PrimitiveSchema[E0, P, F, A](prim)
   def gmap[G[_]](nt: F ~> G) = PrimitiveSchema[E, P, G, A](prim)
   def pmap[Q[_]](nt: P ~> Q) = PrimitiveSchema[E, Q, F, A](nt(prim))
 }
 
-case class ObjectSchema[E, P[_], F[_], A](builder: FreeAp[PropSchema[A, F, ?], A]) extends SchemaF[E, P, F, A] {
+final case class ObjectSchema[E, P[_], F[_], A](builder: FreeAp[PropSchema[A, F, ?], A]) extends SchemaF[E, P, F, A] {
   def map[E0](f: E => E0)    = ObjectSchema[E0, P, F, A](builder)
   def gmap[G[_]](nt: F ~> G) = ObjectSchema[E, P, G, A](builder.hoist[PropSchema[A, G, ?]](PropSchema.instances[A].gmap[F, G](nt)))
   def pmap[Q[_]](nt: P ~> Q) = ObjectSchema[E, Q, F, A](builder)
 }
 
-case class ArraySchema[E, P[_], F[_], A](elemSchema: F[A]) extends SchemaF[E, P, F, List[A]] {
+final case class ArraySchema[E, P[_], F[_], A](elemSchema: F[A]) extends SchemaF[E, P, F, List[A]] {
   def map[E0](f: E => E0)    = ArraySchema[E0, P, F, A](elemSchema)
   def gmap[G[_]](nt: F ~> G) = ArraySchema[E, P, G, A](nt(elemSchema))
   def pmap[Q[_]](nt: P ~> Q) = ArraySchema[E, Q, F, A](elemSchema)
 }
 
-case class OneOfSchema[E, P[_], F[_], A](alternatives: List[Alternative[F, A, B] forSome { type B }]) extends SchemaF[E, P, F, A] {
+final case class OneOfSchema[E, P[_], F[_], A](alternatives: List[Alternative[F, A, B] forSome { type B }]) extends SchemaF[E, P, F, A] {
   def map[E0](f: E => E0)    = OneOfSchema[E0, P, F, A](alternatives)
   def gmap[G[_]](nt: F ~> G) = OneOfSchema[E, P, G, A](alternatives.map(_.gmap(nt)))
   def pmap[Q[_]](nt: P ~> Q) = OneOfSchema[E, Q, F, A](alternatives)
 }
 
-case class ParseSchema[E, P[_], F[_], A, B](base: F[A], parser: A => ParseSchema.ParseResult[E, A, B], g: B => A) extends SchemaF[E, P, F, B] {
+final case class ParseSchema[E, P[_], F[_], A, B](base: F[A], parser: A => ParseSchema.ParseResult[E, A, B], g: B => A) extends SchemaF[E, P, F, B] {
   def map[E0](f: E => E0)    = ParseSchema[E0, P, F, A, B](base, parser.andThen(_.mapError(f)), g)
   def gmap[G[_]](nt: F ~> G) = ParseSchema[E, P, G, A, B](nt(base), parser, g)
   def pmap[Q[_]](nt: P ~> Q) = ParseSchema[E, Q, F, A, B](base, parser, g)
@@ -128,7 +128,7 @@ object ParseSchema {
   }
 }
 
-case class LazySchema[E, P[_], F[_], A](s: Need[F[A]]) extends SchemaF[E, P, F, A] {
+final case class LazySchema[E, P[_], F[_], A](s: Need[F[A]]) extends SchemaF[E, P, F, A] {
   def map[E0](f: E => E0)    = LazySchema[E0, P, F, A](s)
   def gmap[G[_]](nt: F ~> G) = LazySchema[E, P, G, A](s.map(nt))
   def pmap[Q[_]](nt: P ~> Q) = LazySchema[E, Q, F, A](s)

@@ -21,5 +21,5 @@ addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.3")
 
 libraryDependencies ++= Seq(
   "org.scalaz" %% "scalaz-core" % "7.2.7",
-  "io.argonaut" %% "argonaut" % "6.1" 
+  "io.argonaut" %% "argonaut" % "6.2-SNAPSHOT" 
 )

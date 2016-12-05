@@ -51,9 +51,9 @@ object JsonSchema {
     }
   }
 
-  implicit class SchemaCodec[E, P[_], A](s: Schema[E, P, A]) {
-    def toDecodeJson(primDecodeJson: P ~> DecodeJson, err: E => String): DecodeJson[A] = {
-      s.tail match {
+  def toDecodeJson[E, P[_]](primDecodeJson: P ~> DecodeJson, err: E => String): Schema[E, P, ?] ~> DecodeJson = {
+    new NaturalTransformation[Schema[E, P, ?], DecodeJson] {
+      def apply[A](s: Schema[E, P, A]): DecodeJson[A] = s.tail match {
         case s: PrimitiveSchema[E, P, Schema[E, P, ?], A] => primDecodeJson(s.prim)
         case s: ObjectSchema[E, P, Schema[E, P, ?], A] => ???
         case s: ArraySchema[E, P, Schema[E, P, ?], a] => ???
@@ -62,10 +62,6 @@ object JsonSchema {
         case s: LazySchema[E, P, Schema[E, P, ?], A] => ???
       }
     }
-
-    //def toDecodeJsonObject(primDecodeJson: P ~> DecodeJson, err: E => String, free: FreeAp[PropSchema[A, Schema[E, P, ?], ?], A]): DecodeJson[A] = {
-    //  
-    //}
   }
 }
 

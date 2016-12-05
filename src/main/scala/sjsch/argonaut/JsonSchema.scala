@@ -1,5 +1,8 @@
 package sjsch.argonaut
 
+import scalaz.~>
+import scalaz.NaturalTransformation
+
 import sjsch._
 import sjsch.Schema._
 import _root_.argonaut._
@@ -20,7 +23,7 @@ object JsonSchema {
 
   case object JCharT   extends JType[Char]
   case object JStrT    extends JType[String]
-  //case class JConstT[A](a: A) extends JType[A]
+  case class JConst[A](a: A) extends JType[A]
 
   def jNull[E] =   prim[E, JType, Unit](JNullT)
   def jBool[E] =   prim[E, JType, Boolean](JBoolT)
@@ -31,23 +34,27 @@ object JsonSchema {
   def jDouble[E] = prim[E, JType, Double](JDoubleT)
   def jChar[E] =   prim[E, JType, Char](JCharT)
   def jStr[E] =    prim[E, JType, String](JStrT)
+  def jConst[E, A](a: A) = prim[E, JType, A](JConst(a))
 
-  def toDecodeJson[A](t: JType[A]): DecodeJson[A] = t match {
-    case JNullT  => implicitly[DecodeJson[Unit]]
-    case JBoolT  => implicitly[DecodeJson[Boolean]]
-    case JShortT => implicitly[DecodeJson[Short]]
-    case JIntT   => implicitly[DecodeJson[Int]]
-    case JLongT  => implicitly[DecodeJson[Long]]
-    case JFloatT => implicitly[DecodeJson[Float]]
-    case JDoubleT => implicitly[DecodeJson[Double]]
-    case JCharT  => implicitly[DecodeJson[Char]]
-    case JStrT   => implicitly[DecodeJson[String]]
+  def toDecodeJson: JType ~> DecodeJson = new NaturalTransformation[JType, DecodeJson] {
+    def apply[A](jtype: JType[A]): DecodeJson[A] = jtype match {
+      case JNullT  => implicitly[DecodeJson[Unit]]
+      case JBoolT  => implicitly[DecodeJson[Boolean]]
+      case JShortT => implicitly[DecodeJson[Short]]
+      case JIntT   => implicitly[DecodeJson[Int]]
+      case JLongT  => implicitly[DecodeJson[Long]]
+      case JFloatT => implicitly[DecodeJson[Float]]
+      case JDoubleT => implicitly[DecodeJson[Double]]
+      case JCharT  => implicitly[DecodeJson[Char]]
+      case JStrT   => implicitly[DecodeJson[String]]
+      case JConst(a) => DecodeJson(_ => DecodeResult.ok(a))
+    }
   }
 
-  implicit class SchemaCodec[E, A](s: Schema[E, JType, A]) {
-    def toDecodeJson(f: E => String): DecodeJson[A] = {
+  implicit class SchemaCodec[E, F[_], A](s: Schema[E, F, A]) {
+    def toDecodeJson(primDecodeJson: F ~> DecodeJson, err: E => String): DecodeJson[A] = {
       s.tail match {
-        case PrimitiveSchema(jtype) => JsonSchema.toDecodeJson(jtype)
+        case PrimitiveSchema(prim) => primDecodeJson(prim)
         case _ => ???
       }
     }

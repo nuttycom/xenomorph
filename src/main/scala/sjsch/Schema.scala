@@ -49,47 +49,81 @@ object Schema {
 
   def lazily[E, P[_], A](s: => Schema[E, P, A]): Schema[E, P, A] =
     schema(LazySchema[E, P, Schema[E, P, ?], A](Need(s)))
-}
 
-object SchemaF {
-  implicit def instances[E, P[_]]: GFunctor[SchemaF[E, P, ?[_], ?]] = new GFunctor[SchemaF[E, P, ?[_], ?]] {
-    def gmap[M[_], N[_]](nt: M ~> N) = new NaturalTransformation[SchemaF[E, P, M, ?], SchemaF[E, P, N, ?]] {
-      def apply[A](fa: SchemaF[E, P, M, A]): SchemaF[E, P, N, A] = fa.gmap(nt)
+  implicit def instances[P[_], A]: Functor[Schema[?, P, A]] = new Functor[Schema[?, P, A]] {
+    def map[E, E0](fa: Schema[E, P, A])(f: E => E0): Schema[E0, P, A] = {
+      fa.kmap[SchemaF[E0, P, ?[_], ?]](SchemaF.hoNatTrans[E, E0, P](f))
     }
   }
 }
 
+object SchemaF {
+  implicit def gfa[E, P[_]]: GFunctor[SchemaF[E, P, ?[_], ?]] = new GFunctor[SchemaF[E, P, ?[_], ?]] {
+    def gmap[M[_], N[_]](nt: M ~> N) = new NaturalTransformation[SchemaF[E, P, M, ?], SchemaF[E, P, N, ?]] {
+      def apply[A](fa: SchemaF[E, P, M, A]): SchemaF[E, P, N, A] = fa.gmap(nt)
+    }
+  }
+
+  implicit def fe[P[_], F[_], A]: Functor[SchemaF[?, P, F, A]] = new Functor[SchemaF[?, P, F, A]] {
+    def map[E, E0](fa: SchemaF[E, P, F, A])(f: E => E0): SchemaF[E0, P, F, A] = fa.map(f)
+  }
+
+  def errorNT[E, E0, P[_], F[_]](f: E => E0): SchemaF[E, P, F, ?] ~> SchemaF[E0, P, F, ?] = 
+    new NaturalTransformation[SchemaF[E, P, F, ?], SchemaF[E0, P, F, ?]] {
+      def apply[A](fe: SchemaF[E, P, F, A]) = fe.map(f)
+    }
+
+  def hoNatTrans[E, E0, P[_]](f: E => E0): HONatTrans[SchemaF[E, P, ?[_], ?], SchemaF[E0, P, ?[_], ?]] = 
+    new HONatTrans[SchemaF[E, P, ?[_], ?], SchemaF[E0, P, ?[_], ?]] {
+      def apply[M[_], A](fe: SchemaF[E, P, M, A]) = fe.map(f)
+    }
+}
+
 sealed trait SchemaF[E, P[_], F[_], A] {
+  def map[E0](f: E => E0): SchemaF[E0, P, F, A]
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A]
 }
 
 case class PrimitiveSchema[E, P[_], F[_], A](prim: P[A]) extends SchemaF[E, P, F, A] {
+  def map[E0](f: E => E0): SchemaF[E0, P, F, A] = PrimitiveSchema(prim)
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A] = PrimitiveSchema(prim)
 }
 
 case class ObjectSchema[E, P[_], F[_], A](builder: FreeAp[PropSchema[A, F, ?], A]) extends SchemaF[E, P, F, A] {
+  def map[E0](f: E => E0): SchemaF[E0, P, F, A] = ObjectSchema[E0, P, F, A](builder)
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A] = ObjectSchema(builder.hoist[PropSchema[A, G, ?]](PropSchema.instances[A].gmap[F, G](nt)))
 }
 
 case class ArraySchema[E, P[_], F[_], A](elemSchema: F[A]) extends SchemaF[E, P, F, List[A]] {
+  def map[E0](f: E => E0): SchemaF[E0, P, F, List[A]] = ArraySchema[E0, P, F, A](elemSchema)
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, List[A]] = ArraySchema(nt(elemSchema))
 }
 
 case class OneOfSchema[E, P[_], F[_], A](alternatives: List[Alternative[F, A, B] forSome { type B }]) extends SchemaF[E, P, F, A] {
+  def map[E0](f: E => E0): SchemaF[E0, P, F, A] = OneOfSchema[E0, P, F, A](alternatives)
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A] = OneOfSchema(alternatives.map(_.gmap(nt)))
 }
 
-case class ParseSchema[E, P[_], F[_], A, B](base: F[A], f: A => ParseSchema.ParseResult[E, A, B], g: B => A) extends SchemaF[E, P, F, B] {
-  def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, B] = ParseSchema(nt(base), f, g)
+case class ParseSchema[E, P[_], F[_], A, B](base: F[A], parser: A => ParseSchema.ParseResult[E, A, B], g: B => A) extends SchemaF[E, P, F, B] {
+  def map[E0](f: E => E0): SchemaF[E0, P, F, B] = ParseSchema[E0, P, F, A, B](base, parser.andThen(_.mapError(f)), g)
+  def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, B] = ParseSchema(nt(base), parser, g)
 }
 
 object ParseSchema {
-  sealed trait ParseResult[E, S, A]
-  case class PSuccess[E, S, A](a: A) extends ParseResult[E, S, A]
-  case class PFailure[E, S, A](e: E, s: S) extends ParseResult[E, S, A]
+  sealed trait ParseResult[E, S, A] {
+    def mapError[E0](f: E => E0): ParseResult[E0, S, A]
+  }
+  case class PSuccess[E, S, A](a: A) extends ParseResult[E, S, A]  {
+    def mapError[E0](f: E => E0) = PSuccess[E0, S, A](a)
+  }
+
+  case class PFailure[E, S, A](e: E, s: S) extends ParseResult[E, S, A] {
+    def mapError[E0](f: E => E0) = PFailure[E0, S, A](f(e), s)
+  }
 }
 
 case class LazySchema[E, P[_], F[_], A](s: Need[F[A]]) extends SchemaF[E, P, F, A] {
+  def map[E0](f: E => E0): SchemaF[E0, P, F, A] = LazySchema[E0, P, F, A](s)
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A] = LazySchema(s.map(nt))
 }
 

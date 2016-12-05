@@ -10,6 +10,11 @@ trait GFunctor[F[_[_], _]] {
   def gmap[M[_], N[_]](nt: M ~> N): F[M, ?] ~> F[N, ?]
 }
 
+trait HONatTrans[F[_[_], _], G[_[_], _]] {
+  def apply[M[_], A](f: F[M, A]): G[M, A]
+}
+
+
 object GFunctor {
   def apply[F[_[_], _]](implicit v: GFunctor[F]) = v
 
@@ -21,6 +26,16 @@ object GFunctor {
 case class GCofree[F[_[_], _], A[_], I](head: A[I], tail: F[GCofree[F, A, ?], I]) { 
   def gmap[B[_]](nt: A ~> B)(implicit G: GFunctor[F]): GCofree[F, B, I] = {
     GCofree(nt(head), G.gmap[GCofree[F, A, ?], GCofree[F, B, ?]](GCofree.gnt[F, A, B](nt))(tail))
+  }
+
+  def kmap[G[_[_], _]](hont: HONatTrans[F, G])(implicit GF: GFunctor[F], GG: GFunctor[G]): GCofree[G, A, I] = {
+    val nt: F[GCofree[F, A, ?], ?] ~> F[GCofree[G, A, ?], ?] = GF.gmap[GCofree[F, A, ?], GCofree[G, A, ?]](
+      new NaturalTransformation[GCofree[F, A, ?], GCofree[G, A, ?]] {
+        def apply[I0](gcf: GCofree[F, A, I0]): GCofree[G, A, I0] = gcf.kmap[G](hont)
+      }
+    )
+
+    GCofree(head, hont[GCofree[G, A, ?], I](nt(tail)))
   }
 }
 

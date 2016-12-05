@@ -79,6 +79,12 @@ object SchemaF {
     }
 }
 
+trait SchemaFAlg[Repr[_[_], _]] {
+  def prim[E, P[_], F[_], A](prim: P[A]): Repr[F, A]
+  def product[E, P[_], F[_], A](builder: FreeAp[PropSchema[A, F, ?], A]): Repr[F, A]
+  def sum[E, P, F[_], A](alternatives: List[Alternative[F, A, B] forSome { type B }]): Repr[F, A]
+}
+
 sealed abstract class SchemaF[E, P[_], F[_], A] {
   def map[E0](f: E => E0): SchemaF[E0, P, F, A]
   def gmap[G[_]](nt: F ~> G): SchemaF[E, P, G, A]

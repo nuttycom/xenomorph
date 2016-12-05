@@ -52,7 +52,7 @@ object Schema {
 
   implicit def instances[P[_], A]: Functor[Schema[?, P, A]] = new Functor[Schema[?, P, A]] {
     def map[E, E0](fa: Schema[E, P, A])(f: E => E0): Schema[E0, P, A] = {
-      fa.kmap[SchemaF[E0, P, ?[_], ?]](SchemaF.hoNatTrans[E, E0, P](f))
+      fa.kmap[SchemaF[E0, P, ?[_], ?]](SchemaF.errorHONT[E, E0, P](f))
     }
   }
 }
@@ -68,12 +68,7 @@ object SchemaF {
     def map[E, E0](fa: SchemaF[E, P, F, A])(f: E => E0): SchemaF[E0, P, F, A] = fa.map(f)
   }
 
-  def errorNT[E, E0, P[_], F[_]](f: E => E0): SchemaF[E, P, F, ?] ~> SchemaF[E0, P, F, ?] = 
-    new NaturalTransformation[SchemaF[E, P, F, ?], SchemaF[E0, P, F, ?]] {
-      def apply[A](fe: SchemaF[E, P, F, A]) = fe.map(f)
-    }
-
-  def hoNatTrans[E, E0, P[_]](f: E => E0): HONatTrans[SchemaF[E, P, ?[_], ?], SchemaF[E0, P, ?[_], ?]] = 
+  def errorHONT[E, E0, P[_]](f: E => E0): HONatTrans[SchemaF[E, P, ?[_], ?], SchemaF[E0, P, ?[_], ?]] = 
     new HONatTrans[SchemaF[E, P, ?[_], ?], SchemaF[E0, P, ?[_], ?]] {
       def apply[M[_], A](fe: SchemaF[E, P, M, A]) = fe.map(f)
     }

@@ -1,6 +1,6 @@
-package sjsch.argonaut
+package schematic.argonaut
 
-import sjsch.Schema._
+import schematic.Schema._
 
 object JsonSchema {
   sealed trait JType[A]

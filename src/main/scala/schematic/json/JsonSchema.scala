@@ -1,4 +1,4 @@
-package schematic.argonaut
+package schematic.json
 
 import schematic.Schema._
 

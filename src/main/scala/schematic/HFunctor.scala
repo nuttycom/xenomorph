@@ -13,11 +13,6 @@ trait HFunctor[F[_[_], _]] {
   def hfmap[M[_], N[_]](nt: M ~> N): F[M, ?] ~> F[N, ?]
 }
 
-trait HONatTrans[F[_[_], _], G[_[_], _]] {
-  def apply[M[_], A](f: F[M, A]): G[M, A]
-}
-
-
 object HFunctor {
   def apply[F[_[_], _]](implicit v: HFunctor[F]) = v
 

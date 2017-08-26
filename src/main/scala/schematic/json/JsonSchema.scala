@@ -18,14 +18,17 @@ object JsonSchema {
   case object JCharT   extends JType[Char]
   case object JStrT    extends JType[String]
 
-  def jNull[E] =   prim[E, JType, Unit](JNullT)
-  def jBool[E] =   prim[E, JType, Boolean](JBoolT)
-  def jShort[E] =  prim[E, JType, Short](JShortT)
-  def jInt[E] =    prim[E, JType, Int](JIntT)
-  def jLong[E] =   prim[E, JType, Long](JLongT)
-  def jFloat[E] =  prim[E, JType, Float](JFloatT)
-  def jDouble[E] = prim[E, JType, Double](JDoubleT)
-  def jChar[E] =   prim[E, JType, Char](JCharT)
-  def jStr[E] =    prim[E, JType, String](JStrT)
+  case class JArrayT[A](elemSchema: Schema[JType, A]) extends JType[Vector[A]]
+
+  def jNull =   prim[JType, Unit](JNullT)
+  def jBool =   prim[JType, Boolean](JBoolT)
+  def jShort =  prim[JType, Short](JShortT)
+  def jInt =    prim[JType, Int](JIntT)
+  def jLong =   prim[JType, Long](JLongT)
+  def jFloat =  prim[JType, Float](JFloatT)
+  def jDouble = prim[JType, Double](JDoubleT)
+  def jChar =   prim[JType, Char](JCharT)
+  def jStr =    prim[JType, String](JStrT)
+  def jArray[A](elem: Schema[JType, A]) = prim[JType, Vector[A]](JArrayT(elem))
 }
 

@@ -9,6 +9,7 @@ import scalaz.Need
 import scalaz.syntax.functor._
 import scalaz.std.anyVal._
 
+import monocle.Getter
 import monocle.Prism
 
 import HFunctor._
@@ -161,9 +162,9 @@ case class OneOfSchema[P[_], F[_], I](alts: List[Alt[F, I, I0] forSome { type I0
 }
 
 /** A prism between a base type containing the arguments required by
- *  a single constructor of a sum type, and that sum type.
- *  The schema for the base type is used to describe those constructor
- *  arguments; the identifier is used to distinguish which constructor
+ *  a single constructor of a sum type, and that sum type, along with
+ *  the schema for the base type is used to describe those constructor
+ *  arguments. The identifier is used to distinguish which constructor
  *  is being represented in the serialized form.
  *
  *  @tparam F $FDefn
@@ -178,22 +179,63 @@ case class Alt[F[_], I, I0](id: String, base: F[I0], prism: Prism[I, I0]) {
   def hfmap[G[_]](nt: F ~> G): Alt[G, I, I0] = Alt(id, nt(base), prism)
 }
 
+/** Wrapper for the free applicative structure which is used to construct
+ *  and disassemble values of product types.
+ *  
+ *  @tparam P $PDefn
+ *  @tparam F $FDefn
+ *  @tparam I $IDefn
+ *  @param props the free applicative value composed of zero or more PropSchema instances
+ */
 case class RecordSchema[P[_], F[_], I](props: FreeAp[PropSchema[I, F, ?], I]) extends SchemaF[P, F, I] {
   def hfmap[G[_]](nt: F ~> G) = RecordSchema[P, G, I](props.hoist[PropSchema[I, G, ?]](PropSchema.instances[I].hfmap[F, G](nt)))
   def pmap[Q[_]](nt: P ~> Q) = RecordSchema[Q, F, I](props)
 }
 
-
+/** Base trait for values which describe record properties. 
+ *
+ *  @tparam O The record type.
+ *  @tparam F $FDefn
+ *  @tparam A The type of the property value.
+ */
 sealed trait PropSchema[O, F[_], A] {
   def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, A]
 }
 
-case class Required[O, F[_], A](fieldName: String, valueSchema: F[A], accessor: O => A) extends PropSchema[O, F, A] {
-  def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, A] = Required(fieldName, nt(valueSchema), accessor)
+/** Class describing a required property of a record.
+ *
+ * @param fieldName The name of the property.
+ * @param valueSchema Schema for the property's value type.
+ * @param getter Getter lens from the record type to the property.
+ * @param default Optional default value, for use in the case that a
+ *        serialized form is missing the property.
+ */
+case class Required[O, F[_], A](
+  fieldName: String, 
+  valueSchema: F[A], 
+  getter: Getter[O, A], 
+  default: Option[A]
+) extends PropSchema[O, F, A] {
+  def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, A] = 
+    Required(fieldName, nt(valueSchema), getter, default)
 }
 
-case class Optional[O, F[_], A](fieldName: String, valueSchema: F[A], accessor: O => Option[A]) extends PropSchema[O, F, Option[A]] {
-  def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, Option[A]] = Optional(fieldName, nt(valueSchema), accessor)
+/** Class describing an optional property of a record. Since in many
+ *  serialized forms optional properties may be omitted entirely from
+ *  the serialized form, a distinct type is needed in order to be able
+ *  to correctly interpret the absence of a field.
+ *
+ * @param fieldName The name of the property.
+ * @param valueSchema Schema for the property's value type.
+ * @param getter Getter lens from the record type to the property.
+ */
+case class Optional[O, F[_], A](
+  fieldName: String, 
+  valueSchema: F[A], 
+  getter: Getter[O, Option[A]]
+) extends PropSchema[O, F, Option[A]] {
+  def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, Option[A]] = 
+    Optional(fieldName, nt(valueSchema), getter)
 }
 
 object PropSchema {

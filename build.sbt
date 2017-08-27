@@ -19,6 +19,9 @@ resolvers += Resolver.sonatypeRepo("snapshots")
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.3")
 
+// for @Lenses macro support
+addCompilerPlugin("org.scalamacros" %% "paradise" % "2.1.0" cross CrossVersion.full)
+
 val monocleVersion = "1.4.0"     
 
 libraryDependencies ++= Seq(

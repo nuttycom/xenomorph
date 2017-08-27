@@ -11,7 +11,7 @@ import monocle.macros._
 
 import schematic.Schema._
 
-case class Person(
+@Lenses case class Person(
   name: String, 
   birthDate: Double, // seconds since the epoch
   roles: Vector[Role]
@@ -25,7 +25,7 @@ case object Role {
 }
 
 case object User extends Role
-case class Administrator(department: String, subordinateCount: Int) extends Role
+@Lenses case class Administrator(department: String, subordinateCount: Int) extends Role
 
 sealed trait Prim[A]
 case object StrPrim extends Prim[String]
@@ -59,9 +59,9 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
       "administrator", 
       rec[Prim, Administrator](
         ^[TProp[Administrator, ?], String, Int, Administrator](
-          required("department", Prim.str) { _.department },
-          required("subordinateCount", Prim.int) { _.subordinateCount }
-        )(Administrator(_, _))
+          required("department", Prim.str, Administrator.department.asGetter),
+          required("subordinateCount", Prim.int, Administrator.subordinateCount.asGetter)
+        )(Administrator.apply _)
       ),
       Role.admin
     ) :: Nil
@@ -69,9 +69,9 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
 
   val personSchema = rec[Prim, Person](
     ^^[TProp[Person, ?], String, Double, Vector[Role], Person](
-      required("name", Prim.str) { _.name },
-      required("birthDate", Prim.double) { _.birthDate },
-      required("roles", Prim.arr(roleSchema)) { _.roles }
+      required("name", Prim.str, Person.name.asGetter),
+      required("birthDate", Prim.double, Person.birthDate.asGetter),
+      required("roles", Prim.arr(roleSchema), Person.roles.asGetter)
     )(Person.apply _)
   )
 }

@@ -9,6 +9,7 @@ import scalaz.Need
 import scalaz.syntax.functor._
 import scalaz.std.anyVal._
 
+import monocle.Getter
 import monocle.Prism
 
 import HFunctor._
@@ -100,22 +101,42 @@ object Schema {
    *  @tparam P $PDefn
    *  @tparam I $IDefn
    *  @param props The free-applicative value that captures the structure 
-   *    of the record type.
+   *         of the record type.
    */
   def rec[P[_], I](props: Props[Unit, P, I]): Schema[Unit, P, I] = 
     schema((), RecordSchema[P, Schema[Unit, P, ?], I](props))
 
   /** Smart constructor for required Prop instances.
+   *
    *  @tparam P $PDefn
    *  @tparam O $ODefn
    *  @tparam I $IDefn
    *  @param fieldName name of the record property
    *  @param valueSchema schema for the record property's type
-   *  @param accessor function from the record type to the property's value
+   *  @param getter Getter lens from the record type to the property's value
    */
-  def required[P[_], O, I](fieldName: String, valueSchema: Schema[Unit, P, I])(accessor: O => I): Prop[Unit, P, O, I] = {
+  def required[P[_], O, I](fieldName: String, valueSchema: Schema[Unit, P, I], getter: Getter[O, I]): Prop[Unit, P, O, I] = {
     FreeAp.lift[PropSchema[O, Schema[Unit, P, ?], ?], I](
-      Required[O, Schema[Unit, P, ?], I](fieldName, valueSchema, accessor)
+      Required[O, Schema[Unit, P, ?], I](fieldName, valueSchema, getter, None)
+    )
+  }
+
+  /** Smart constructor for required Prop instances, with a default
+   *  provided for the case where a serialized form is missing the 
+   *  required field.
+   *
+   *  @tparam P $PDefn
+   *  @tparam O $ODefn
+   *  @tparam I $IDefn
+   *  @param fieldName Name of the record property
+   *  @param valueSchema Schema for the record property's type
+   *  @param default Default value for use in the case that a serialized form
+   *         is missing the required field.
+   *  @param getter Getter lens from the record type to the property's value
+   */
+  def property[P[_], O, I](fieldName: String, valueSchema: Schema[Unit, P, I], default: I, getter: Getter[O, I]): Prop[Unit, P, O, I] = {
+    FreeAp.lift[PropSchema[O, Schema[Unit, P, ?], ?], I](
+      Required[O, Schema[Unit, P, ?], I](fieldName, valueSchema, getter, Some(default))
     )
   }
   
@@ -125,11 +146,11 @@ object Schema {
    *  @tparam I $IDefn
    *  @param fieldName name of the record property
    *  @param valueSchema schema for the record property's type
-   *  @param accessor function from the record type to the property's value
+   *  @param getter Getter lens from the record type to the property's value
    */
-  def optional[P[_], O, I](fieldName: String, valueSchema: Schema[Unit, P, I])(accessor: O => Option[I]): Prop[Unit, P, O, Option[I]] = {
+  def optional[P[_], O, I](fieldName: String, valueSchema: Schema[Unit, P, I], getter: Getter[O, Option[I]]): Prop[Unit, P, O, Option[I]] = {
     FreeAp.lift[PropSchema[O, Schema[Unit, P, ?], ?], Option[I]](
-      Optional[O, Schema[Unit, P, ?], I](fieldName, valueSchema, accessor)
+      Optional[O, Schema[Unit, P, ?], I](fieldName, valueSchema, getter)
     )
   }
 
@@ -141,7 +162,7 @@ object Schema {
    *  @tparam I $IDefn
    *  @param a The annotation value to attach to the schema.
    *  @param props The free-applicative value that captures the structure 
-   *    of the record type.
+   *         of the record type.
    */
   def annRec[A, P[_], I](a: A, props: Props[A, P, I]): Schema[A, P, I] = 
     schema(a, RecordSchema[P, Schema[A, P, ?], I](props))
@@ -196,6 +217,9 @@ object Schema {
    *  @tparam P $PDefn
    *  @tparam I $IDefn
    *  @tparam J The type of the base value which can be mapped into the `I` algebra.
+   *  @param id The unique identifier of the constructor
+   *  @param base The schema for the `J` type
+   *  @param prism Prism between the sum type and the selected constructor.
    */
   def alt[A, P[_], I, J](id: String, base: Schema[A, P, J], prism: Prism[I, J]) = 
     Alt[Schema[A, P, ?], I, J](id, base, prism)

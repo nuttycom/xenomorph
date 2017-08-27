@@ -167,6 +167,15 @@ case class OneOfSchema[P[_], F[_], I](alts: List[Alt[F, I, I0] forSome { type I0
  *  arguments. The identifier is used to distinguish which constructor
  *  is being represented in the serialized form.
  *
+ *  @define IDefn The type of the Scala value to be produced (or consumed)
+ *          by an interpreter of the schema. Also known as the "index" type
+ *          of the schema.
+ *
+ *  @define FDefn The functor through which the structure of the schema will
+ *          be interpreted. This will almost always be a fixpoint type such as
+ *          [[schematic.HCofree]], which is used to introduce the ability to
+ *          create recursive (tree-structured) schema.
+ *
  *  @tparam F $FDefn
  *  @tparam I $IDefn
  *  @tparam I0 The base type which corresponds to the arguments to
@@ -193,6 +202,11 @@ case class RecordSchema[P[_], F[_], I](props: FreeAp[PropSchema[I, F, ?], I]) ex
 }
 
 /** Base trait for values which describe record properties. 
+ *
+ *  @define FDefn The functor through which the structure of the schema will
+ *          be interpreted. This will almost always be a fixpoint type such as
+ *          [[schematic.HCofree]], which is used to introduce the ability to
+ *          create recursive (tree-structured) schema.
  *
  *  @tparam O The record type.
  *  @tparam F $FDefn

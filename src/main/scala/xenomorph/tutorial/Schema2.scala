@@ -116,7 +116,7 @@ object schemaPrim {
   case class JSumT[P[_], A](alternatives: List[Alt[P, A, B] forSome { type B }]) extends JSchema[P, A]
   case class Alt[P[_], A, B](id: String, base: JSchema[P, B], review: B => A, preview: A => Option[B])
 
-  case class JObjT[P[_], A](recordBuilder: FreeAp[PropSchema[P, A, ?], A]) extends JSchema[P, A]
+  case class JObjT[P[_], A](props: FreeAp[PropSchema[P, A, ?], A]) extends JSchema[P, A]
   case class PropSchema[P[_], O, A](fieldName: String, valueSchema: JSchema[P, A], accessor: O => A)
 
   sealed trait JsonPrim[A]

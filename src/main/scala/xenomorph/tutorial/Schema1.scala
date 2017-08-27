@@ -50,33 +50,33 @@ object schema2 {
   case object JNumT extends JSchema[Double]
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
-  case class JObjT[A](recordBuilder: RecordBuilder[A, A]) extends JSchema[A]
+  case class JObjT[A](props: Props[A, A]) extends JSchema[A]
   
-  sealed trait RecordBuilder[O, A] 
-  case class PureRecordBuilder[O, A](a: A) extends RecordBuilder[O, A]
-  case class ApRecordBuilder[O, A, B](
+  sealed trait Props[O, A] 
+  case class PureProps[O, A](a: A) extends Props[O, A]
+  case class ApProps[O, A, B](
     hd: PropSchema[O, B], 
-    tl: RecordBuilder[O, B => A]
-  ) extends RecordBuilder[O, A]
+    tl: Props[O, B => A]
+  ) extends Props[O, A]
 
   case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
   
-  object RecordBuilder {
-    def applicative[O] = new Applicative[RecordBuilder[O, ?]] {
-      def point[A](a: => A): RecordBuilder[O, A] = PureRecordBuilder(a)
+  object Props {
+    def applicative[O] = new Applicative[Props[O, ?]] {
+      def point[A](a: => A): Props[O, A] = PureProps(a)
   
-      override def map[A,B](fa: RecordBuilder[O, A])(f: A => B): RecordBuilder[O, B] = {
+      override def map[A,B](fa: Props[O, A])(f: A => B): Props[O, B] = {
         fa match {
-          case PureRecordBuilder(a) => PureRecordBuilder(f(a))
-          case ApRecordBuilder(hd, tl) => ApRecordBuilder(hd, map(tl)(f compose _))
+          case PureProps(a) => PureProps(f(a))
+          case ApProps(hd, tl) => ApProps(hd, map(tl)(f compose _))
         }
       }
   
-      def ap[A,B](fa: => RecordBuilder[O, A])(ff: => RecordBuilder[O, A => B]): RecordBuilder[O, B] = {
+      def ap[A,B](fa: => Props[O, A])(ff: => Props[O, A => B]): Props[O, B] = {
         ff match {
-          case PureRecordBuilder(f) => map(fa)(f)
-          case aprb: ApRecordBuilder[O, (A => B), i] => 
-            ApRecordBuilder(
+          case PureProps(f) => map(fa)(f)
+          case aprb: ApProps[O, (A => B), i] => 
+            ApProps(
               aprb.hd, 
               ap(fa) { 
                 map[i => (A => B), A => (i => B)](aprb.tl) { 
@@ -98,12 +98,12 @@ object schema3 {
   case object JNumT extends JSchema[Double]
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
-  case class JObjT[A](recordBuilder: RecordBuilder[PropSchema, A, A]) extends JSchema[A]
+  case class JObjT[A](props: Props[PropSchema, A, A]) extends JSchema[A]
   case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
   
-  sealed trait RecordBuilder[F[_, _], O, A] 
-  case class PureRecordBuilder[F[_, _], O, A](a: A) extends RecordBuilder[F, O, A]
-  case class ApRecordBuilder[F[_, _], O, A, B](hd: F[O, B], tl: RecordBuilder[F, O, B => A]) extends RecordBuilder[F, O, A]
+  sealed trait Props[F[_, _], O, A] 
+  case class PureProps[F[_, _], O, A](a: A) extends Props[F, O, A]
+  case class ApProps[F[_, _], O, A, B](hd: F[O, B], tl: Props[F, O, B => A]) extends Props[F, O, A]
 }
 
 object schema4 {
@@ -114,12 +114,12 @@ object schema4 {
   case object JNumT extends JSchema[Double]
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
-  case class JObjT[A](recordBuilder: RecordBuilder[PropSchema[A, ?], A]) extends JSchema[A]
+  case class JObjT[A](props: Props[PropSchema[A, ?], A]) extends JSchema[A]
   case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
   
-  sealed trait RecordBuilder[F[_], A] 
-  case class PureRecordBuilder[F[_], A](a: A) extends RecordBuilder[F, A]
-  case class ApRecordBuilder[F[_], A, B](hd: F[B], tl: RecordBuilder[F, B => A]) extends RecordBuilder[F, A]
+  sealed trait Props[F[_], A] 
+  case class PureProps[F[_], A](a: A) extends Props[F, A]
+  case class ApProps[F[_], A, B](hd: F[B], tl: Props[F, B => A]) extends Props[F, A]
 }
 
 object schema5 {
@@ -130,7 +130,7 @@ object schema5 {
   case object JNumT extends JSchema[Double]
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
-  case class JObjT[A](recordBuilder: FreeAp[PropSchema[A, ?], A]) extends JSchema[A]
+  case class JObjT[A](props: FreeAp[PropSchema[A, ?], A]) extends JSchema[A]
   case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
 
   case class JSumT[A](alternatives: List[Alt[A, B] forSome { type B }]) extends JSchema[A]

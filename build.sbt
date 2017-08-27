@@ -26,3 +26,5 @@ libraryDependencies ++= Seq(
   "org.specs2"     %% "specs2-core" % "3.9.4"  % "test",
   "org.specs2"     %% "specs2-scalacheck" % "3.9.4"  % "test"
 )
+
+autoAPIMappings := true

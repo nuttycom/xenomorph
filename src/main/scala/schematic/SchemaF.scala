@@ -5,43 +5,161 @@ import scalaz.Applicative
 import scalaz.Const
 import scalaz.Functor
 import scalaz.FreeAp
-import scalaz.NaturalTransformation
 import scalaz.Need
 import scalaz.syntax.functor._
 import scalaz.std.anyVal._
 
 import HFunctor._
 
-sealed trait SchemaF[P[_], F[_], A] {
-  def hfmap[G[_]](nt: F ~> G): SchemaF[P, G, A]
-  def pmap[Q[_]](nt: P ~> Q): SchemaF[Q, F, A]
+/** The base trait for the schema GADT.
+ *
+ *  @define PDefn The GADT type constructor for a sum type which defines 
+ *          the set of primitive types used in the schema.
+ *  @define IDefn The type of the Scala value to be produced (or consumed)
+ *          by an interpreter of the schema. Also known as the "index" type
+ *          of the schema.
+ *  @define FDefn The functor through which the structure of the schema will
+ *          be interpreted. This will almost always be a fixpoint type such as
+ *          [[schematic.HCofree]], which is used to introduce the ability to
+ *          create recursive (tree-structured) schema.
+ *
+ *  @tparam P $PDefn
+ *  @tparam F $FDefn
+ *  @tparam I $IDefn
+ */
+sealed trait SchemaF[P[_], F[_], I] {
+  /** HFunctor operation which allows transformation of the
+   *  functor through which the structure of the schema will
+   *  be interpreted.
+   *
+   *  Defining this operation directly on the SchemaF type
+   *  rather than in [[schematic.SchemaF.hfunctor]] simplifies
+   *  type inference.
+   */
+  def hfmap[G[_]](nt: F ~> G): SchemaF[P, G, I]
+
+  /** HFunctor operation which allows transformation of the
+   *  primitive algebra of the schema.
+   *
+   *  Defining this operation directly on the SchemaF type
+   *  rather than in [[schematic.SchemaF.hfunctor]] simplifies
+   *  type inference.
+   */
+  def pmap[Q[_]](nt: P ~> Q): SchemaF[Q, F, I]
 }
 
 object SchemaF {
   implicit def hfunctor[P[_]]: HFunctor[SchemaF[P, ?[_], ?]] = new HFunctor[SchemaF[P, ?[_], ?]] {
-    def hfmap[M[_], N[_]](nt: M ~> N) = new NaturalTransformation[SchemaF[P, M, ?], SchemaF[P, N, ?]] {
-      def apply[A](fa: SchemaF[P, M, A]): SchemaF[P, N, A] = fa.hfmap(nt)
+    def hfmap[M[_], N[_]](nt: M ~> N) = new (SchemaF[P, M, ?] ~> SchemaF[P, N, ?]) {
+      def apply[I](fa: SchemaF[P, M, I]): SchemaF[P, N, I] = fa.hfmap(nt)
     }
   }
 }
 
-case class PrimSchema[P[_], F[_], A](prim: P[A]) extends SchemaF[P, F, A] {
-  def hfmap[G[_]](nt: F ~> G) = PrimSchema[P, G, A](prim)
-  def pmap[Q[_]](nt: P ~> Q) = PrimSchema[Q, F, A](nt(prim))
+/** Schema constructor that wraps a value of an underlying GADT
+ *  of allowed primitive types.
+ *
+ *  The underlying GADT defines a set of types via GADT constructors;
+ *  see [[schematic.json.JType]] for an example. This set of types
+ *  defines what types may be treated as primitive (and have parsing/
+ *  serialization/etc deferred to an external handler) when interpreting
+ *  a schema value. For example, one might want to construct a GADT for
+ *  for the Scala primitive types as such:
+ *
+ *  {{{
+ *  sealed trait SType[I]
+ *
+ *  case object SNullT   extends SType[Unit]
+ *  case object SBoolT   extends SType[Boolean]
+ *  
+ *  case object SByteT   extends SType[Byte]
+ *  case object SShortT  extends SType[Short]
+ *  case object SIntT    extends SType[Int]
+ *  case object SLongT   extends SType[Long]
+ *  
+ *  case object SFloatT  extends SType[Float]
+ *  case object SDoubleT extends SType[Double]
+ *  
+ *  case object SCharT   extends SType[Char]
+ *  case object SStrT    extends SType[String]
+ *  }}}
+ *
+ *  This example treats String values as primitive as well, even though
+ *  strictly speaking they're reference types, just because virtually 
+ *  any interpreter for a schema algebra will not want to represent
+ *  strings in terms of sum or product types. The same might hold true
+ *  for, for example, [[scala.Array]] but for the purposes of this example
+ *  issues related to `ClassManifest` instances would introduce excessive
+ *  complexity.
+ *
+ *  @tparam P $PDefn
+ *  @tparam F $FDefn
+ *  @tparam I $IDefn
+ */
+case class PrimSchema[P[_], F[_], I](prim: P[I]) extends SchemaF[P, F, I] {
+  def hfmap[G[_]](nt: F ~> G) = PrimSchema[P, G, I](prim)
+  def pmap[Q[_]](nt: P ~> Q) = PrimSchema[Q, F, I](nt(prim))
 }
 
-case class OneOfSchema[P[_], F[_], A](alternatives: List[Alternative[F, A, B] forSome { type B }]) extends SchemaF[P, F, A] {
-  def hfmap[G[_]](nt: F ~> G) = OneOfSchema[P, G, A](alternatives.map(_.hfmap(nt)))
-  def pmap[Q[_]](nt: P ~> Q) = OneOfSchema[Q, F, A](alternatives)
+/** Constructor that enables creation of schema for sum types.
+ *
+ *  Each constructor of the sum type `I` is represented as a member
+ *  of the list of alternatives. Each alternative defines a prism
+ *  between a single constructor of the sum type, and an underlying
+ *  type describing the arguments demanded by that constructor.
+ *
+ *  Consider the following sum type. The first constructor takes
+ *  no arguments; the second takes two.
+ *
+ *  {{{
+ *  sealed trait Role
+ *  
+ *  case object User extends Role
+ *  case class Administrator(department: String, subordinateCount: Int) extends Role
+ *  }}}
+ *
+ *  A schema value for this type looks like:
+ *
+ *  {{{
+ *  val roleSchema = oneOf(
+ *    alt[Unit, Prim, Role, Unit](
+ *      "user", 
+ *      Schema.empty,
+ *      (_: Unit) => User, 
+ *      { 
+ *        case User => Some(Unit)
+ *        case _ => None
+ *      }
+ *    ) ::
+ *    alt[Unit, Prim, Role, Administrator](
+ *      "administrator", 
+ *      rec[Prim, Administrator](
+ *        ^[Schema.Prop[Unit, Prim, Administrator, ?], String, Int, Administrator](
+ *          required("department", Prim.str, (_: Administrator).department),
+ *          required("subordinateCount", Prim.int, (_: Administrator).subordinateCount)
+ *        )(Administrator(_, _))
+ *      ),
+ *      identity,
+ *      { 
+ *        case a @ Administrator(_, _) => Some(a)
+ *        case _ => None
+ *      }
+ *    ) :: Nil
+ *  )
+ *  }}}
+ */
+case class OneOfSchema[P[_], F[_], I](alts: List[Alt[F, I, I0] forSome { type I0 }]) extends SchemaF[P, F, I] {
+  def hfmap[G[_]](nt: F ~> G) = OneOfSchema[P, G, I](alts.map(_.hfmap(nt)))
+  def pmap[Q[_]](nt: P ~> Q) = OneOfSchema[Q, F, I](alts)
 }
 
-case class Alternative[F[_], A, B](id: String, base: F[B], f: B => A, g: A => Option[B]) {
-  def hfmap[G[_]](nt: F ~> G): Alternative[G, A, B] = Alternative(id, nt(base), f, g)
+case class Alt[F[_], I, I0](id: String, base: F[I0], review: I0 => I, preview: I => Option[I0]) {
+  def hfmap[G[_]](nt: F ~> G): Alt[G, I, I0] = Alt(id, nt(base), review, preview)
 }
 
-case class RecordSchema[P[_], F[_], A](props: FreeAp[PropSchema[A, F, ?], A]) extends SchemaF[P, F, A] {
-  def hfmap[G[_]](nt: F ~> G) = RecordSchema[P, G, A](props.hoist[PropSchema[A, G, ?]](PropSchema.instances[A].hfmap[F, G](nt)))
-  def pmap[Q[_]](nt: P ~> Q) = RecordSchema[Q, F, A](props)
+case class RecordSchema[P[_], F[_], I](props: FreeAp[PropSchema[I, F, ?], I]) extends SchemaF[P, F, I] {
+  def hfmap[G[_]](nt: F ~> G) = RecordSchema[P, G, I](props.hoist[PropSchema[I, G, ?]](PropSchema.instances[I].hfmap[F, G](nt)))
+  def pmap[Q[_]](nt: P ~> Q) = RecordSchema[Q, F, I](props)
 }
 
 
@@ -59,14 +177,8 @@ case class Optional[O, F[_], A](fieldName: String, valueSchema: F[A], accessor: 
 
 object PropSchema {
   implicit def instances[O] = new HFunctor[PropSchema[O, ?[_], ?]] {
-    def hfmap[M[_], N[_]](nt: M ~> N) = new NaturalTransformation[PropSchema[O, M, ?], PropSchema[O, N, ?]] {
+    def hfmap[M[_], N[_]](nt: M ~> N) = new (PropSchema[O, M, ?] ~> PropSchema[O, N, ?]) {
       def apply[A](ps: PropSchema[O, M, A]): PropSchema[O, N, A] = ps.hfmap(nt)
     }
   }
 }
-
-case class LazySchema[P[_], F[_], A](s: Need[F[A]]) extends SchemaF[P, F, A] {
-  def hfmap[G[_]](nt: F ~> G) = LazySchema[P, G, A](s.map(nt))
-  def pmap[Q[_]](nt: P ~> Q) = LazySchema[Q, F, A](s)
-}
-

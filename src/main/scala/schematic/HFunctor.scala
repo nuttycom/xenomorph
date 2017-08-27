@@ -6,7 +6,6 @@ import scalaz.Applicative
 import scalaz.Const
 import scalaz.Name
 import scalaz.Need
-import scalaz.NaturalTransformation
 import scalaz.syntax.applicative._
 
 trait HFunctor[F[_[_], _]] {
@@ -21,16 +20,20 @@ object HFunctor {
   }
 }
 
+/** Fixpoint data type that can preserve a type index through
+ *  its recursive step.
+ */
 case class HCofree[F[_[_], _], A, I](head: A, tail: Name[F[HCofree[F, A, ?], I]])
 
 object HCofree {
+  /** Functor over the annotation type of an HCofree value */
   implicit def functor[F[_[_], _], I](implicit HF: HFunctor[F]): Functor[HCofree[F, ?, I]] = new Functor[HCofree[F, ?, I]] {
     def map[A, B](fa: HCofree[F, A, I])(f: A => B): HCofree[F, B, I] = {
       HCofree(
         f(fa.head), 
         Need(
           HF.hfmap[HCofree[F, A, ?], HCofree[F, B, ?]](
-            new NaturalTransformation[HCofree[F, A, ?], HCofree[F, B, ?]] {
+            new (HCofree[F, A, ?] ~> HCofree[F, B, ?]) {
               def apply[I0](gcf: HCofree[F, A, I0]) = functor(HF).map(gcf)(f)
             }
           ).apply(
@@ -41,7 +44,16 @@ object HCofree {
     }
   }
 
+  /** Simple fixpoint type that can preserve a type index
+   *  through its recursive step
+   */
   type HFix[F[_[_], _], I] = HCofree[F, Unit, I]
 
-  def hfix[F[_[_], _], A](fga: F[HFix[F, ?], A]): HFix[F, A] = HCofree[F, Unit, A]((), Need(fga))
+  /** Smart constructor for HCofree values. */
+  def annotate[F[_[_], _], A, I](a: A, fga: => F[HCofree[F, A, ?], I]): HCofree[F, A, I] = 
+    HCofree[F, A, I](a, Need(fga))
+
+  /** Smart constructor for HFix values. */
+  def hfix[F[_[_], _], I](fga: => F[HFix[F, ?], I]): HFix[F, I] = 
+    annotate((), fga)
 }

@@ -111,7 +111,7 @@ object Schema {
    *  @param valueSchema schema for the record property's type
    *  @param accessor function from the record type to the property's value
    */
-  def required[P[_], O, I](fieldName: String, valueSchema: Schema[Unit, P, I], accessor: O => I): Prop[Unit, P, O, I] = {
+  def required[P[_], O, I](fieldName: String, valueSchema: Schema[Unit, P, I])(accessor: O => I): Prop[Unit, P, O, I] = {
     FreeAp.lift[PropSchema[O, Schema[Unit, P, ?], ?], I](
       Required[O, Schema[Unit, P, ?], I](fieldName, valueSchema, accessor)
     )
@@ -125,7 +125,7 @@ object Schema {
    *  @param valueSchema schema for the record property's type
    *  @param accessor function from the record type to the property's value
    */
-  def optional[P[_], O, I](fieldName: String, valueSchema: Schema[Unit, P, I], accessor: O => Option[I]): Prop[Unit, P, O, Option[I]] = {
+  def optional[P[_], O, I](fieldName: String, valueSchema: Schema[Unit, P, I])(accessor: O => Option[I]): Prop[Unit, P, O, Option[I]] = {
     FreeAp.lift[PropSchema[O, Schema[Unit, P, ?], ?], Option[I]](
       Optional[O, Schema[Unit, P, ?], I](fieldName, valueSchema, accessor)
     )

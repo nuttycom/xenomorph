@@ -95,6 +95,7 @@ object SchemaF {
  *  @tparam P $PDefn
  *  @tparam F $FDefn
  *  @tparam I $IDefn
+ *  @param prim value identifying a primitive type.
  */
 case class PrimSchema[P[_], F[_], I](prim: P[I]) extends SchemaF[P, F, I] {
   def hfmap[G[_]](nt: F ~> G) = PrimSchema[P, G, I](prim)
@@ -147,12 +148,34 @@ case class PrimSchema[P[_], F[_], I](prim: P[I]) extends SchemaF[P, F, I] {
  *    ) :: Nil
  *  )
  *  }}}
+ *
+ *  @tparam P $PDefn
+ *  @tparam F $FDefn
+ *  @tparam I $IDefn
  */
 case class OneOfSchema[P[_], F[_], I](alts: List[Alt[F, I, I0] forSome { type I0 }]) extends SchemaF[P, F, I] {
   def hfmap[G[_]](nt: F ~> G) = OneOfSchema[P, G, I](alts.map(_.hfmap(nt)))
   def pmap[Q[_]](nt: P ~> Q) = OneOfSchema[Q, F, I](alts)
 }
 
+/** A prism between a base type containing the arguments required by
+ *  a single constructor of a sum type, and that sum type.
+ *  The schema for the base type is used to describe those constructor
+ *  arguments; the identifier is used to distinguish which constructor
+ *  is being represented in the serialized form.
+ *
+ *  @tparam F $FDefn
+ *  @tparam I $IDefn
+ *  @tparam I0 The base type which corresponds to the arguments to
+ *          the selected constructor.
+ *  @param id The unique identifier of the constructor
+ *  @param base The schema for the `I0` type
+ *  @param review The constructor function for the sum type value
+ *  @param preview Extractor which takes a value of the sum type and
+ *         returns a value of the associated constructor parameters type. 
+ *         This function combined with `review` forms a prism.
+ *         
+ */
 case class Alt[F[_], I, I0](id: String, base: F[I0], review: I0 => I, preview: I => Option[I0]) {
   def hfmap[G[_]](nt: F ~> G): Alt[G, I, I0] = Alt(id, nt(base), review, preview)
 }

@@ -9,6 +9,8 @@ import scalaz.Need
 import scalaz.syntax.functor._
 import scalaz.std.anyVal._
 
+import monocle.Prism
+
 import HFunctor._
 
 /** Data types and smart constructors which simplify the creation
@@ -195,8 +197,8 @@ object Schema {
    *  @tparam I $IDefn
    *  @tparam J The type of the base value which can be mapped into the `I` algebra.
    */
-  def alt[A, P[_], I, J](id: String, base: Schema[A, P, J], review: J => I, preview: I => Option[J]) = 
-    Alt[Schema[A, P, ?], I, J](id, base, review, preview)
+  def alt[A, P[_], I, J](id: String, base: Schema[A, P, J], prism: Prism[I, J]) = 
+    Alt[Schema[A, P, ?], I, J](id, base, prism)
 
   /** Constructs the HFunctor instance for a Schema.
    *

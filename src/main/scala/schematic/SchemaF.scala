@@ -9,6 +9,8 @@ import scalaz.Need
 import scalaz.syntax.functor._
 import scalaz.std.anyVal._
 
+import monocle.Prism
+
 import HFunctor._
 
 /** The base trait for the schema GADT.
@@ -170,14 +172,10 @@ case class OneOfSchema[P[_], F[_], I](alts: List[Alt[F, I, I0] forSome { type I0
  *          the selected constructor.
  *  @param id The unique identifier of the constructor
  *  @param base The schema for the `I0` type
- *  @param review The constructor function for the sum type value
- *  @param preview Extractor which takes a value of the sum type and
- *         returns a value of the associated constructor parameters type. 
- *         This function combined with `review` forms a prism.
- *         
+ *  @param prism Prism between the sum type and the selected constructor.
  */
-case class Alt[F[_], I, I0](id: String, base: F[I0], review: I0 => I, preview: I => Option[I0]) {
-  def hfmap[G[_]](nt: F ~> G): Alt[G, I, I0] = Alt(id, nt(base), review, preview)
+case class Alt[F[_], I, I0](id: String, base: F[I0], prism: Prism[I, I0]) {
+  def hfmap[G[_]](nt: F ~> G): Alt[G, I, I0] = Alt(id, nt(base), prism)
 }
 
 case class RecordSchema[P[_], F[_], I](props: FreeAp[PropSchema[I, F, ?], I]) extends SchemaF[P, F, I] {

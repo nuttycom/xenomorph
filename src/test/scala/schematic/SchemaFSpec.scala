@@ -7,6 +7,8 @@ import org.specs2._
 import org.scalacheck._
 import org.scalacheck.Gen._
 
+import monocle.macros._
+
 import schematic.Schema._
 
 case class Person(
@@ -16,6 +18,11 @@ case class Person(
 )
 
 sealed trait Role
+
+case object Role {
+  val user = GenPrism[Role, User.type]
+  val admin = GenPrism[Role, Administrator]
+}
 
 case object User extends Role
 case class Administrator(department: String, subordinateCount: Int) extends Role
@@ -46,11 +53,7 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
     alt[Unit, Prim, Role, Unit](
       "user", 
       Schema.empty,
-      (_: Unit) => User, 
-      { 
-        case User => Some(Unit)
-        case _ => None
-      }
+      Role.user composeIso GenIso.unit[User.type]
     ) ::
     alt[Unit, Prim, Role, Administrator](
       "administrator", 
@@ -60,11 +63,7 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
           required("subordinateCount", Prim.int) { _.subordinateCount }
         )(Administrator(_, _))
       ),
-      identity,
-      { 
-        case a @ Administrator(_, _) => Some(a)
-        case _ => None
-      }
+      Role.admin
     ) :: Nil
   )
 

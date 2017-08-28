@@ -14,20 +14,25 @@
  */
 package xenomorph
 
-import scalaz.syntax.apply._
 import scalaz.FreeAp
+import scalaz.Profunctor
+import scalaz.syntax.apply._
+import scalaz.syntax.profunctor._
 
 import org.specs2._
 import org.scalacheck._
 import org.scalacheck.Gen._
 
+import monocle.Getter
 import monocle.macros._
+
+import org.joda.time.Instant
 
 import xenomorph.Schema._
 
 @Lenses case class Person(
   name: String, 
-  birthDate: Double, // seconds since the epoch
+  birthDate: Instant,
   roles: Vector[Role]
 )
 
@@ -44,14 +49,14 @@ case object User extends Role
 sealed trait Prim[A]
 case object StrPrim extends Prim[String]
 case object IntPrim extends Prim[Int]
-case object DoublePrim extends Prim[Double]
+case object LongPrim extends Prim[Long]
 case class ArrPrim[I](elemSchema: Schema[Unit, Prim, I]) extends Prim[Vector[I]]
 
 object Prim {
   type PSchema[A] = Schema[Unit, Prim, A]
   def str: PSchema[String] = Schema.prim(StrPrim)
   def int: PSchema[Int] = Schema.prim(IntPrim)
-  def double: PSchema[Double] = Schema.prim(DoublePrim)
+  def long: PSchema[Long] = Schema.prim(LongPrim)
   def arr[A](elem: PSchema[A]): PSchema[Vector[A]] = 
     Schema.prim[Prim, Vector[A]](ArrPrim(elem))
 }
@@ -62,6 +67,7 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
   """
 
   type TProp[O, A] = Schema.Prop[Unit, Prim, O, A]
+  implicit val profTProp: Profunctor[TProp] = propProfunctor[Unit, Prim]
 
   val roleSchema: Schema[Unit, Prim, Role] = Schema.oneOf(
     alt[Unit, Prim, Role, Unit](
@@ -82,9 +88,9 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
   )
 
   val personSchema = rec[Prim, Person](
-    ^^[TProp[Person, ?], String, Double, Vector[Role], Person](
+    ^^[TProp[Person, ?], String, Instant, Vector[Role], Person](
       required("name", Prim.str, Person.name.asGetter),
-      required("birthDate", Prim.double, Person.birthDate.asGetter),
+      profTProp.dimap(required("birthDate", Prim.long, Getter.id[Long]))((_: Person).birthDate.getMillis)(new Instant(_: Long)),
       required("roles", Prim.arr(roleSchema), Person.roles.asGetter)
     )(Person.apply _)
   )

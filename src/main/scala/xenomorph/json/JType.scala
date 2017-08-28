@@ -12,9 +12,9 @@
  * ensure the GNU Lesser General Public License version 3.0 requirements
  * will be met: https://www.gnu.org/licenses/lgpl-3.0.txt
  */
-package schematic.json
+package xenomorph.json
 
-import schematic.Schema._
+import xenomorph.Schema._
 
 sealed trait JType[A, I]
 

@@ -1,4 +1,4 @@
-name := "schematic"
+name := "xenomorph"
 
 version := "0.0.1"
 

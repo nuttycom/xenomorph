@@ -12,7 +12,7 @@
  * ensure the GNU Lesser General Public License version 3.0 requirements
  * will be met: https://www.gnu.org/licenses/lgpl-3.0.txt
  */
-package schematic
+package xenomorph
 
 import scalaz.syntax.apply._
 import scalaz.FreeAp
@@ -23,7 +23,7 @@ import org.scalacheck.Gen._
 
 import monocle.macros._
 
-import schematic.Schema._
+import xenomorph.Schema._
 
 @Lenses case class Person(
   name: String, 

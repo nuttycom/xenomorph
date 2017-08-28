@@ -12,7 +12,7 @@
  * ensure the GNU Lesser General Public License version 3.0 requirements
  * will be met: https://www.gnu.org/licenses/lgpl-3.0.txt
  */
-package schematic
+package xenomorph
 
 import scalaz.~>
 import scalaz.Applicative
@@ -37,7 +37,7 @@ import HFunctor._
  *          of the schema.
  *  @define FDefn The functor through which the structure of the schema will
  *          be interpreted. This will almost always be a fixpoint type such as
- *          [[schematic.HCofree]], which is used to introduce the ability to
+ *          [[xenomorph.HCofree]], which is used to introduce the ability to
  *          create recursive (tree-structured) schema.
  *
  *  @tparam P $PDefn
@@ -50,7 +50,7 @@ sealed trait SchemaF[P[_], F[_], I] {
    *  be interpreted.
    *
    *  Defining this operation directly on the SchemaF type
-   *  rather than in [[schematic.SchemaF.hfunctor]] simplifies
+   *  rather than in [[xenomorph.SchemaF.hfunctor]] simplifies
    *  type inference.
    */
   def hfmap[G[_]](nt: F ~> G): SchemaF[P, G, I]
@@ -59,7 +59,7 @@ sealed trait SchemaF[P[_], F[_], I] {
    *  primitive algebra of the schema.
    *
    *  Defining this operation directly on the SchemaF type
-   *  rather than in [[schematic.SchemaF.hfunctor]] simplifies
+   *  rather than in [[xenomorph.SchemaF.hfunctor]] simplifies
    *  type inference.
    */
   def pmap[Q[_]](nt: P ~> Q): SchemaF[Q, F, I]
@@ -77,7 +77,7 @@ object SchemaF {
  *  of allowed primitive types.
  *
  *  The underlying GADT defines a set of types via GADT constructors;
- *  see [[schematic.json.JType]] for an example. This set of types
+ *  see [[xenomorph.json.JType]] for an example. This set of types
  *  defines what types may be treated as primitive (and have parsing/
  *  serialization/etc deferred to an external handler) when interpreting
  *  a schema value. For example, one might want to construct a GADT for
@@ -187,7 +187,7 @@ case class OneOfSchema[P[_], F[_], I](alts: List[Alt[F, I, I0] forSome { type I0
  *
  *  @define FDefn The functor through which the structure of the schema will
  *          be interpreted. This will almost always be a fixpoint type such as
- *          [[schematic.HCofree]], which is used to introduce the ability to
+ *          [[xenomorph.HCofree]], which is used to introduce the ability to
  *          create recursive (tree-structured) schema.
  *
  *  @tparam F $FDefn
@@ -219,7 +219,7 @@ case class RecordSchema[P[_], F[_], I](props: FreeAp[PropSchema[I, F, ?], I]) ex
  *
  *  @define FDefn The functor through which the structure of the schema will
  *          be interpreted. This will almost always be a fixpoint type such as
- *          [[schematic.HCofree]], which is used to introduce the ability to
+ *          [[xenomorph.HCofree]], which is used to introduce the ability to
  *          create recursive (tree-structured) schema.
  *
  *  @tparam O The record type.

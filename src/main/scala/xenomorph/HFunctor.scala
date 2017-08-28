@@ -12,7 +12,7 @@
  * ensure the GNU Lesser General Public License version 3.0 requirements
  * will be met: https://www.gnu.org/licenses/lgpl-3.0.txt
  */
-package schematic
+package xenomorph
 
 import scalaz.~>
 import scalaz.Functor

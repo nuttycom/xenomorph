@@ -60,7 +60,7 @@ object schema2 {
   ) extends Props[O, A]
 
   case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
-  
+
   object Props {
     def applicative[O] = new Applicative[Props[O, ?]] {
       def point[A](a: => A): Props[O, A] = PureProps(a)

@@ -272,4 +272,13 @@ object PropSchema {
       def apply[A](ps: PropSchema[O, M, A]): PropSchema[O, N, A] = ps.hfmap(nt)
     }
   }
+
+  def contraNT[O, N, F[_]](f: N => O) = new (PropSchema[O, F, ?] ~> PropSchema[N, F, ?]) {
+    def apply[I](pso: PropSchema[O, F, I]): PropSchema[N, F, I] = {
+      pso match {
+        case Required(n, s, g, d) => Required(n, s, Getter(f).composeGetter(g), d)
+        case Optional(n, s, g) => Optional(n, s, Getter(f).composeGetter(g))
+      }
+    }
+  }
 }

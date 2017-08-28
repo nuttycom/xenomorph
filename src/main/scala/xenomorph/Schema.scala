@@ -17,6 +17,7 @@ package xenomorph
 import scalaz.~>
 import scalaz.Applicative
 import scalaz.Const
+import scalaz.Profunctor
 import scalaz.Functor
 import scalaz.FreeAp
 import scalaz.Need
@@ -255,6 +256,14 @@ object Schema {
         schema(s.head, sf.hfmap[Schema[A, Q, ?]](self))
       }
     }
+  }
+
+  implicit def propProfunctor[A, P[_]]: Profunctor[Prop[A, P, ?, ?]] = new Profunctor[Prop[A, P, ?, ?]] {
+    def mapfst[O, I, N](prop: Prop[A, P, O, I])(f: N => O): Prop[A, P, N, I] = prop.hoist[PropSchema[N, Schema[A, P, ?], ?]](
+      PropSchema.contraNT[O, N, Schema[A, P, ?]](f)
+    )
+
+    def mapsnd[O, I, J](prop: Prop[A, P, O, I])(f: I => J): Prop[A, P, O, J] = prop.map(f)    
   }
 }
 

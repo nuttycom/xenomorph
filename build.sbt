@@ -34,6 +34,7 @@ libraryDependencies ++= Seq(
   "com.github.julien-truffaut"  %%  "monocle-state"   % monocleVersion,     
   "com.github.julien-truffaut"  %%  "monocle-refined" % monocleVersion,
   "com.github.julien-truffaut"  %%  "monocle-law"     % monocleVersion % "test",
+  "joda-time" % "joda-time" % "2.9.4" % "test",
   "org.specs2"     %% "specs2-core" % "3.9.4"  % "test",
   "org.specs2"     %% "specs2-scalacheck" % "3.9.4"  % "test"
 )

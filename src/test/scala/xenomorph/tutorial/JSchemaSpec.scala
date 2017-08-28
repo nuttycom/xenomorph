@@ -15,7 +15,7 @@ import xenomorph.tutorial.schema5._
 
 case class Person(
   name: String, 
-  birthDate: Double, // seconds since the epoch
+  birthDate: Long,
   roles: Vector[Role]
 )
 
@@ -28,7 +28,7 @@ class JSchemaSpec extends Specification with org.specs2.ScalaCheck {
   def is = s2"""
   Serialization of primitive values to JSON should
     serialize boolean values $serBool
-    serialize double values $serDouble
+    serialize double values $serLong
     serialize string values $serString
   """
 
@@ -36,7 +36,7 @@ class JSchemaSpec extends Specification with org.specs2.ScalaCheck {
     ok
   }
 
-  def serDouble = {
+  def serLong = {
     ok
   }
 

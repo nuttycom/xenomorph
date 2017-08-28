@@ -127,7 +127,7 @@ object schemaPrimJson {
   sealed trait JsonPrim[A]
   case object JBoolT extends JsonPrim[Boolean]
   case object JStrT extends JsonPrim[String]
-  case object JNumT extends JsonPrim[Double]
+  case object JNumT extends JsonPrim[Long]
 
   object JsonPrim {
     implicit val JsonPrimToJson = new ToJson[JsonPrim] {

@@ -20,7 +20,7 @@ object schema1 {
 
   case object JBoolT extends JSchema[Boolean]
   case object JStrT extends JSchema[String]
-  case object JNumT extends JSchema[Double]
+  case object JNumT extends JSchema[Long]
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
   def serialize[A](schema: JSchema[A], value: A): Json = {
@@ -36,7 +36,7 @@ object schema1 {
     schema match {
       case JBoolT => BooleanDecodeJson
       case JStrT  => StringDecodeJson
-      case JNumT  => DoubleDecodeJson
+      case JNumT  => LongDecodeJson
       case JVecT(elemSchema) => VectorDecodeJson(decoder(elemSchema))
     }
   }
@@ -47,7 +47,7 @@ object schema2 {
 
   case object JBoolT extends JSchema[Boolean]
   case object JStrT extends JSchema[String]
-  case object JNumT extends JSchema[Double]
+  case object JNumT extends JSchema[Long]
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
   case class JObjT[A](props: Props[A, A]) extends JSchema[A]
@@ -95,7 +95,7 @@ object schema3 {
 
   case object JBoolT extends JSchema[Boolean]
   case object JStrT extends JSchema[String]
-  case object JNumT extends JSchema[Double]
+  case object JNumT extends JSchema[Long]
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
   case class JObjT[A](props: Props[PropSchema, A, A]) extends JSchema[A]
@@ -111,7 +111,7 @@ object schema4 {
 
   case object JBoolT extends JSchema[Boolean]
   case object JStrT extends JSchema[String]
-  case object JNumT extends JSchema[Double]
+  case object JNumT extends JSchema[Long]
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
   case class JObjT[A](props: Props[PropSchema[A, ?], A]) extends JSchema[A]
@@ -127,7 +127,7 @@ object schema5 {
 
   case object JBoolT extends JSchema[Boolean]
   case object JStrT extends JSchema[String]
-  case object JNumT extends JSchema[Double]
+  case object JNumT extends JSchema[Long]
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
   case class JObjT[A](props: FreeAp[PropSchema[A, ?], A]) extends JSchema[A]
@@ -177,7 +177,7 @@ object schema5 {
       schema match {
         case JBoolT => BooleanDecodeJson
         case JStrT  => StringDecodeJson
-        case JNumT  => DoubleDecodeJson
+        case JNumT  => LongDecodeJson
         case JVecT(elemSchema) => VectorDecodeJson(decoder(elemSchema))
         case JSumT(alts) => 
           DecodeJson { (c: HCursor) => 

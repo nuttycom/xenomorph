@@ -51,6 +51,7 @@ scalacOptions ++= Seq(
   "-Ywarn-unused:privates",            // Warn if a private member is unused.
   "-Ywarn-value-discard"               // Warn when non-Unit expression results are unused.
 )
+
 resolvers += Resolver.sonatypeRepo("releases")
 
 resolvers += Resolver.sonatypeRepo("snapshots")

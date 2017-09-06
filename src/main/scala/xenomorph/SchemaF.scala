@@ -15,18 +15,10 @@
 package xenomorph
 
 import scalaz.~>
-import scalaz.Applicative
-import scalaz.Const
-import scalaz.Functor
 import scalaz.FreeAp
-import scalaz.Need
-import scalaz.syntax.functor._
-import scalaz.std.anyVal._
 
 import monocle.Getter
 import monocle.Prism
-
-import HFunctor._
 
 /** The base trait for the schema GADT.
  *

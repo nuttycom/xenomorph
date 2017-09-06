@@ -14,14 +14,12 @@
  */
 package xenomorph
 
-import scalaz.FreeAp
 import scalaz.Profunctor
 import scalaz.syntax.apply._
-import scalaz.syntax.profunctor._
 
 import org.specs2._
-import org.scalacheck._
-import org.scalacheck.Gen._
+//import org.scalacheck._
+//import org.scalacheck.Gen._
 
 import monocle.Getter
 import monocle.macros._
@@ -77,8 +75,8 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
     ) ::
     alt[Unit, Prim, Role, Administrator](
       "administrator", 
-      rec[Prim, Administrator](
-        ^[TProp[Administrator, ?], String, Int, Administrator](
+      rec(
+        ^(
           required("department", Prim.str, Administrator.department.asGetter),
           required("subordinateCount", Prim.int, Administrator.subordinateCount.asGetter)
         )(Administrator.apply _)
@@ -87,8 +85,8 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
     ) :: Nil
   )
 
-  val personSchema = rec[Prim, Person](
-    ^^[TProp[Person, ?], String, Instant, Vector[Role], Person](
+  val personSchema = rec(
+    ^^(
       required("name", Prim.str, Person.name.asGetter),
       profTProp.dimap(required("birthDate", Prim.long, Getter.id[Long]))((_: Person).birthDate.getMillis)(new Instant(_: Long)),
       required("roles", Prim.arr(roleSchema), Person.roles.asGetter)

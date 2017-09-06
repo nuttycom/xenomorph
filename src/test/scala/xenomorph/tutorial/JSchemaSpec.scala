@@ -1,15 +1,15 @@
 package xenomorph.tutorial
 
-import argonaut.Json
-import argonaut.Json._
-import argonaut.DecodeJson
-import argonaut.DecodeJson._
+//import argonaut.Json
+//import argonaut.Json._
+//import argonaut.DecodeJson
+//import argonaut.DecodeJson._
 
 import scalaz.FreeAp
 
 import org.specs2._
-import org.scalacheck._
-import org.scalacheck.Gen._
+//import org.scalacheck._
+//import org.scalacheck.Gen._
 
 import xenomorph.tutorial.schema5._
 
@@ -47,16 +47,16 @@ class JSchemaSpec extends Specification with org.specs2.ScalaCheck {
   val roleSchema = JSumT(
     Alt[Role, Unit](
       "user", 
-      JObjT(FreeAp.pure[PropSchema[Unit, ?], Unit](Unit)), 
+      JObjT(FreeAp.pure(())), 
       (_: Unit) => User, 
       { 
-        case User => Some(Unit)
+        case User => Some(())
         case _ => None
       }
     ) ::
     Alt[Role, String](
       "user", 
-      JObjT(FreeAp.lift[PropSchema[String, ?], String](PropSchema("department", JStrT, identity))), 
+      JObjT(FreeAp.lift(PropSchema("department", JStrT, identity))), 
       Administrator(_),
       { 
         case Administrator(dept) => Some(dept)

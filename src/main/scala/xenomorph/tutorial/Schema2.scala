@@ -95,7 +95,7 @@ object schemaPrim {
               results match {
                 case x :: Nil => x
                 case Nil => DecodeResult.fail(s"No fields found matching any of ${altIds}", c.history)
-                case xs => DecodeResult.fail(s"More than one matching field found among ${altIds}", c.history)
+                case _ => DecodeResult.fail(s"More than one matching field found among ${altIds}", c.history)
               }
             }
 
@@ -105,8 +105,8 @@ object schemaPrim {
 
       def decodeObj[A](rb: FreeAp[PropSchema[P, A, ?], A]): DecodeJson[A] = {
         implicit val djap: Applicative[DecodeJson] = new Applicative[DecodeJson] {
-          def point[A](a: => A) = DecodeJson(_ => DecodeResult.ok(a))
-          def ap[A, B](fa: => DecodeJson[A])(ff: => DecodeJson[A => B]): DecodeJson[B] = {
+          def point[A0](a: => A0) = DecodeJson(_ => DecodeResult.ok(a))
+          def ap[A0, B](fa: => DecodeJson[A0])(ff: => DecodeJson[A0 => B]): DecodeJson[B] = {
             fa.flatMap(a => ff.map(_(a)))
           }
         }

@@ -219,6 +219,9 @@ case class RecordSchema[P[_], F[_], I](props: FreeAp[PropSchema[I, F, ?], I]) ex
  *  @tparam A The type of the property value.
  */
 sealed trait PropSchema[O, F[_], A] {
+  def fieldName: String
+  def getter: Getter[O, A]
+
   def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, A]
 }
 

@@ -51,11 +51,11 @@ object schema2 {
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
   case class JObjT[A](props: Props[A, A]) extends JSchema[A]
-  
-  sealed trait Props[O, A] 
+
+  sealed trait Props[O, A]
   case class PureProps[O, A](a: A) extends Props[O, A]
   case class ApProps[O, A, B](
-    hd: PropSchema[O, B], 
+    hd: PropSchema[O, B],
     tl: Props[O, B => A]
   ) extends Props[O, A]
 
@@ -64,22 +64,22 @@ object schema2 {
   object Props {
     def applicative[O] = new Applicative[Props[O, ?]] {
       def point[A](a: => A): Props[O, A] = PureProps(a)
-  
+
       override def map[A,B](fa: Props[O, A])(f: A => B): Props[O, B] = {
         fa match {
           case PureProps(a) => PureProps(f(a))
           case ApProps(hd, tl) => ApProps(hd, map(tl)(f compose _))
         }
       }
-  
+
       def ap[A,B](fa: => Props[O, A])(ff: => Props[O, A => B]): Props[O, B] = {
         ff match {
           case PureProps(f) => map(fa)(f)
-          case aprb: ApProps[O, (A => B), i] => 
+          case aprb: ApProps[O, (A => B), i] =>
             ApProps(
-              aprb.hd, 
-              ap(fa) { 
-                map[i => (A => B), A => (i => B)](aprb.tl) { 
+              aprb.hd,
+              ap(fa) {
+                map[i => (A => B), A => (i => B)](aprb.tl) {
                   (g: i => (A => B)) => { (a: A) => { (i: i) => g(i)(a) } } // this is just flip
                 }
               }
@@ -100,8 +100,8 @@ object schema3 {
 
   case class JObjT[A](props: Props[PropSchema, A, A]) extends JSchema[A]
   case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
-  
-  sealed trait Props[F[_, _], O, A] 
+
+  sealed trait Props[F[_, _], O, A]
   case class PureProps[F[_, _], O, A](a: A) extends Props[F, O, A]
   case class ApProps[F[_, _], O, A, B](hd: F[O, B], tl: Props[F, O, B => A]) extends Props[F, O, A]
 }
@@ -116,8 +116,8 @@ object schema4 {
 
   case class JObjT[A](props: Props[PropSchema[A, ?], A]) extends JSchema[A]
   case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
-  
-  sealed trait Props[F[_], A] 
+
+  sealed trait Props[F[_], A]
   case class PureProps[F[_], A](a: A) extends Props[F, A]
   case class ApProps[F[_], A, B](hd: F[B], tl: Props[F, B => A]) extends Props[F, A]
 }
@@ -143,13 +143,13 @@ object schema5 {
         case JStrT  => jString(value)
         case JNumT  => jNumber(value)
         case JVecT(elemSchema) => jArray(value.map(serialize(elemSchema, _)).toList)
-        case JSumT(alts) => 
+        case JSumT(alts) =>
           val results = alts flatMap {
-            case Alt(id, base, _, preview) => 
-              preview(value).map(serialize(base, _)).toList map { json => 
+            case Alt(id, base, _, preview) =>
+              preview(value).map(serialize(base, _)).toList map { json =>
                 jObject(JsonObject.single(id, json))
               }
-          } 
+          }
 
           results.head //yeah, I know
 
@@ -179,8 +179,8 @@ object schema5 {
         case JStrT  => StringDecodeJson
         case JNumT  => LongDecodeJson
         case JVecT(elemSchema) => VectorDecodeJson(decoder(elemSchema))
-        case JSumT(alts) => 
-          DecodeJson { (c: HCursor) => 
+        case JSumT(alts) =>
+          DecodeJson { (c: HCursor) =>
             val results = for {
               fields <- c.fields.toList
               altResult <- alts flatMap {
@@ -189,7 +189,7 @@ object schema5 {
                     c.downField(id).as(decoder(base)).map(review)
                   ).toList
               }
-            } yield altResult 
+            } yield altResult
 
             val altIds = alts.map(_.id)
             results match {

@@ -16,11 +16,11 @@ import scalaz.State
 import scalaz.State._
 import scalaz.syntax.std.boolean._
 
-sealed trait ToJson[S[_]] {
+trait ToJson[S[_]] {
   def serialize[A](schema: S[A], value: A): Json
 }
 
-sealed trait FromJson[S[_]] {
+trait FromJson[S[_]] {
   def decoder[A](schema: S[A]): DecodeJson[A]
 }
 
@@ -42,13 +42,13 @@ object schemaPrim {
       def serialize[A](schema: GSchema[P, A], value: A): Json = {
         schema match {
           case PrimT(p) => implicitly[ToJson[P]].serialize(p, value)
-          case SumT(alts) => 
+          case SumT(alts) =>
             val results = alts flatMap {
-              case Alt(id, base, _, preview) => 
-                preview(value).map(serialize(base, _)).toList map { json => 
+              case Alt(id, base, _, preview) =>
+                preview(value).map(serialize(base, _)).toList map { json =>
                   jObject(JsonObject.single(id, json))
                 }
-            } 
+            }
 
             results.head //yeah, I know
 
@@ -79,8 +79,8 @@ object schemaPrim {
         schema match {
           case PrimT(p) => implicitly[FromJson[P]].decoder(p)
           case VecT(elemSchema) => VectorDecodeJson(decoder(elemSchema))
-          case SumT(alts) => 
-            DecodeJson { (c: HCursor) => 
+          case SumT(alts) =>
+            DecodeJson { (c: HCursor) =>
               val results = for {
                 fields <- c.fields.toList
                 altResult <- alts flatMap {
@@ -89,7 +89,7 @@ object schemaPrim {
                       c.downField(id).as(decoder(base)).map(review)
                     ).toList
                 }
-              } yield altResult 
+              } yield altResult
 
               val altIds = alts.map(_.id)
               results match {

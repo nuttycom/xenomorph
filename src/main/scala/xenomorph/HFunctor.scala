@@ -16,11 +16,8 @@ package xenomorph
 
 import scalaz.~>
 import scalaz.Functor
-import scalaz.Applicative
-import scalaz.Const
 import scalaz.Name
 import scalaz.Need
-import scalaz.syntax.applicative._
 
 trait HFunctor[F[_[_], _]] {
   def hfmap[M[_], N[_]](nt: M ~> N): F[M, ?] ~> F[N, ?]

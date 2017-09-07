@@ -16,18 +16,11 @@ package xenomorph
 
 import scalaz.~>
 import scalaz.Applicative
-import scalaz.Const
 import scalaz.Profunctor
-import scalaz.Functor
 import scalaz.FreeAp
-import scalaz.Need
-import scalaz.syntax.functor._
-import scalaz.std.anyVal._
 
 import monocle.Getter
 import monocle.Prism
-
-import HFunctor._
 
 /** Data types and smart constructors which simplify the creation
  *  of schema values.
@@ -187,7 +180,7 @@ object Schema {
    *  @tparam P $PDefn
    */
   def empty[P[_]]: Schema[Unit, P, Unit] = 
-    rec[P, Unit](FreeAp.pure[PropSchema[Unit, Schema[Unit, P, ?], ?], Unit](Unit))
+    rec[P, Unit](FreeAp.pure[PropSchema[Unit, Schema[Unit, P, ?], ?], Unit](()))
 
   /** Builds an un-annotated schema for the sum type `I` from a list of alternatives. 
    *

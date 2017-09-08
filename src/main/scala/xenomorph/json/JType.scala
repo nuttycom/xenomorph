@@ -29,6 +29,7 @@ import scalaz.syntax.std.option._
 
 import xenomorph._
 import xenomorph.Schema._
+import xenomorph.HFunctor._
 
 sealed trait JType[A, I]
 
@@ -66,47 +67,53 @@ trait ToJson[S[_]] {
 }
 
 object ToJson {
+  def serializeF[P[_]: ToJson]: HAlgebra[SchemaF[P, ?[_], ?], ? => Json] = new HAlgebra[SchemaF[P, ?[_], ?], ? => Json] {
+    def apply[I](schema: SchemaF[P, ? => Json, I]): I => Json = (value: I) => schema match {
+      case PrimSchema(p) => 
+        implicitly[ToJson[P]].serialize(p, value)
+
+      case OneOfSchema(alts) => 
+        val results = alts flatMap {
+          case Alt(id, base, prism) => 
+            prism.getOption(value).map(base).toList map { json => 
+              jObject(JsonObject.single(id, json))
+            }
+        } 
+
+        results.head //yeah, I know
+
+      case RecordSchema(props) => 
+        serializeObjF(props)
+    }
+  }
+
+  def serializeObjF[P[_]: ToJson, I](rb: FreeAp[PropSchema[I, ? => Json, ?], I]): I => Json = (value: I) => {
+    jObject(
+      rb.foldMap[State[JsonObject, ?]](
+        new (PropSchema[I, ? => Json, ?] ~> State[JsonObject, ?]) {
+          def apply[B](ps: PropSchema[I, ? => Json, B]): State[JsonObject, B] = {
+            for {
+              obj <- get
+              _ <- ps match {
+                case Required(field, base, getter, _) => 
+                  put(obj + (field, base(getter.get(value))))
+
+                case opt: Optional[I, ? => Json, i] =>
+                  opt.getter.get(value).cata(
+                    v => put(obj + (opt.fieldName, opt.valueSchema(v))),
+                    ().pure[State[JsonObject, ?]]
+                  )
+              }
+            } yield ps.getter.get(value)
+          }
+        }
+      ).exec(JsonObject.empty)
+    )
+  }
+
   implicit def jSchemaToJson[A, P[_]: ToJson]: ToJson[Schema[A, P, ?]] = new ToJson[Schema[A, P, ?]] {
     def serialize[I](schema: Schema[A, P, I], value: I): Json = {
-      schema.tail.value match {
-        case PrimSchema(p) => implicitly[ToJson[P]].serialize(p, value)
-
-        case OneOfSchema(alts) => 
-          val results = alts flatMap {
-            case Alt(id, base, prism) => 
-              prism.getOption(value).map(serialize(base, _)).toList map { json => 
-                jObject(JsonObject.single(id, json))
-              }
-          } 
-
-          results.head //yeah, I know
-
-        case RecordSchema(props) => serializeObj(props, value)
-      }
-    }
-
-    def serializeObj[I](rb: FreeAp[PropSchema[I, Schema[A, P, ?], ?], I], value: I): Json = {
-      jObject(
-        rb.foldMap[State[JsonObject, ?]](
-          new (PropSchema[I, Schema[A, P, ?], ?] ~> State[JsonObject, ?]) {
-            def apply[B](ps: PropSchema[I, Schema[A, P, ?], B]): State[JsonObject, B] = {
-              for {
-                obj <- get
-                _ <- ps match {
-                  case Required(field, schema, getter, _) => 
-                    put(obj + (field, serialize(schema, getter.get(value))))
-
-                  case opt: Optional[I, Schema[A, P, ?], i] =>
-                    opt.getter.get(value).cata(
-                      v => put(obj + (opt.fieldName, serialize(opt.valueSchema, v))),
-                      ().pure[State[JsonObject, ?]]
-                    )
-                }
-              } yield ps.getter.get(value)
-            }
-          }
-        ).exec(JsonObject.empty)
-      )
+      HCofree.cata[SchemaF[P, ?[_], ?], ? => Json, I](schema.map(_ => ()), serializeF).apply(value)
     }
   }
 }

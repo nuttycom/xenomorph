@@ -106,7 +106,7 @@ object SchemaF {
  *  @tparam I $IDefn
  *  @param prim value identifying a primitive type.
  */
-case class PrimSchema[P[_], F[_], I](prim: P[I]) extends SchemaF[P, F, I] {
+final case class PrimSchema[P[_], F[_], I](prim: P[I]) extends SchemaF[P, F, I] {
   def hfmap[G[_]](nt: F ~> G) = PrimSchema[P, G, I](prim)
   def pmap[Q[_]](nt: P ~> Q) = PrimSchema[Q, F, I](nt(prim))
 }
@@ -162,7 +162,7 @@ case class PrimSchema[P[_], F[_], I](prim: P[I]) extends SchemaF[P, F, I] {
  *  @tparam F $FDefn
  *  @tparam I $IDefn
  */
-case class OneOfSchema[P[_], F[_], I](alts: List[Alt[F, I, I0] forSome { type I0 }]) extends SchemaF[P, F, I] {
+final case class OneOfSchema[P[_], F[_], I](alts: List[Alt[F, I, I0] forSome { type I0 }]) extends SchemaF[P, F, I] {
   def hfmap[G[_]](nt: F ~> G) = OneOfSchema[P, G, I](alts.map(_.hfmap(nt)))
   def pmap[Q[_]](nt: P ~> Q) = OneOfSchema[Q, F, I](alts)
 }
@@ -190,7 +190,7 @@ case class OneOfSchema[P[_], F[_], I](alts: List[Alt[F, I, I0] forSome { type I0
  *  @param base The schema for the `I0` type
  *  @param prism Prism between the sum type and the selected constructor.
  */
-case class Alt[F[_], I, I0](id: String, base: F[I0], prism: Prism[I, I0]) {
+final case class Alt[F[_], I, I0](id: String, base: F[I0], prism: Prism[I, I0]) {
   def hfmap[G[_]](nt: F ~> G): Alt[G, I, I0] = Alt(id, nt(base), prism)
 }
 
@@ -202,7 +202,7 @@ case class Alt[F[_], I, I0](id: String, base: F[I0], prism: Prism[I, I0]) {
  *  @tparam I $IDefn
  *  @param props the free applicative value composed of zero or more PropSchema instances
  */
-case class RecordSchema[P[_], F[_], I](props: FreeAp[PropSchema[I, F, ?], I]) extends SchemaF[P, F, I] {
+final case class RecordSchema[P[_], F[_], I](props: FreeAp[PropSchema[I, F, ?], I]) extends SchemaF[P, F, I] {
   def hfmap[G[_]](nt: F ~> G) = RecordSchema[P, G, I](props.hoist[PropSchema[I, G, ?]](PropSchema.instances[I].hfmap[F, G](nt)))
   def pmap[Q[_]](nt: P ~> Q) = RecordSchema[Q, F, I](props)
 }
@@ -228,19 +228,19 @@ sealed trait PropSchema[O, F[_], A] {
 /** Class describing a required property of a record.
  *
  * @param fieldName The name of the property.
- * @param valueSchema Schema for the property's value type.
+ * @param base Schema for the property's value type.
  * @param getter Getter lens from the record type to the property.
  * @param default Optional default value, for use in the case that a
  *        serialized form is missing the property.
  */
-case class Required[O, F[_], A](
+final case class Required[O, F[_], A](
   fieldName: String, 
-  valueSchema: F[A], 
+  base: F[A], 
   getter: Getter[O, A], 
   default: Option[A]
 ) extends PropSchema[O, F, A] {
   def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, A] = 
-    Required(fieldName, nt(valueSchema), getter, default)
+    Required(fieldName, nt(base), getter, default)
 }
 
 /** Class describing an optional property of a record. Since in many
@@ -249,16 +249,16 @@ case class Required[O, F[_], A](
  *  to correctly interpret the absence of a field.
  *
  * @param fieldName The name of the property.
- * @param valueSchema Schema for the property's value type.
+ * @param base Schema for the property's value type.
  * @param getter Getter lens from the record type to the property.
  */
-case class Optional[O, F[_], A](
+final case class Optional[O, F[_], A](
   fieldName: String, 
-  valueSchema: F[A], 
+  base: F[A], 
   getter: Getter[O, Option[A]]
 ) extends PropSchema[O, F, Option[A]] {
   def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, Option[A]] = 
-    Optional(fieldName, nt(valueSchema), getter)
+    Optional(fieldName, nt(base), getter)
 }
 
 object PropSchema {
@@ -272,7 +272,7 @@ object PropSchema {
     def apply[I](pso: PropSchema[O, F, I]): PropSchema[N, F, I] = {
       pso match {
         case Required(n, s, g, d) => Required(n, s, Getter(f).composeGetter(g), d)
-        case Optional(n, s, g) => Optional(n, s, Getter(f).composeGetter(g))
+        case opt: Optional[O, F, i] => Optional(opt.fieldName, opt.base, Getter(f).composeGetter(opt.getter))
       }
     }
   }

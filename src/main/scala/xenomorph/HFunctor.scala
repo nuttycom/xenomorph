@@ -2,7 +2,7 @@
  * Copyright (C) 2017 Kris Nuttycombe
  * All rights reserved.
  *
- * This file is part of the Scala Schematic library.
+ * This file is part of the Scala Xenomorph library.
  *
  * GNU Lesser General Public License Usage
  * This file may be used under the terms of the GNU Lesser
@@ -43,6 +43,8 @@ case class HCofree[F[_[_], _], A, I](head: A, tail: Name[F[HCofree[F, A, ?], I]]
 //final case class HEnvT[E, F[_[_], _], A[_], I](ask: E, fa: F[A, I])
 //
 //final case class HFix[F[_[_], _], I](hfix: F[HFix[F, ?], I]
+//
+final case class HMutu[F[_[_], _], G[_[_], _], I](mutu: F[G[HMutu[F, G, ?], ?], I])
 
 object HCofree {
   import HFunctor._

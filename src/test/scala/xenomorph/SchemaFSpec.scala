@@ -2,7 +2,7 @@
  * Copyright (C) 2017 Kris Nuttycombe
  * All rights reserved.
  *
- * This file is part of the Scala Schematic library.
+ * This file is part of the Scala Xenomorph library.
  *
  * GNU Lesser General Public License Usage
  * This file may be used under the terms of the GNU Lesser

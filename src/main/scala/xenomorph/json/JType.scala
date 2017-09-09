@@ -2,7 +2,7 @@
  * Copyright (C) 2017 Kris Nuttycombe
  * All rights reserved.
  *
- * This file is part of the Scala Schematic library.
+ * This file is part of the Scala Xenomorph library.
  *
  * GNU Lesser General Public License Usage
  * This file may be used under the terms of the GNU Lesser
@@ -14,35 +14,39 @@
  */
 package xenomorph.json
 
+import xenomorph.HMutu
 import xenomorph.Schema._
 
-sealed trait JType[A, I]
+sealed trait JType[F[_], I]
 
-case class JNullT[A]()   extends JType[A, Unit]
-case class JBoolT[A]()   extends JType[A, Boolean]
+case class JNullT[F[_]]()   extends JType[F, Unit]
+case class JBoolT[F[_]]()   extends JType[F, Boolean]
+//
+//case class JByteT[A]()   extends JType[A, Byte]
+//case class JShortT[A]()  extends JType[A, Short]
+//case class JIntT[A]()    extends JType[A, Int]
+//case class JLongT[A]()   extends JType[A, Long]
+//
+//case class JFloatT[A]()  extends JType[A, Float]
+//case class JDoubleT[A]() extends JType[A, Double]
+//
+//case class JCharT[A]()   extends JType[A, Char]
+//case class JStrT[A]()    extends JType[A, String]
 
-case class JByteT[A]()   extends JType[A, Byte]
-case class JShortT[A]()  extends JType[A, Short]
-case class JIntT[A]()    extends JType[A, Int]
-case class JLongT[A]()   extends JType[A, Long]
-
-case class JFloatT[A]()  extends JType[A, Float]
-case class JDoubleT[A]() extends JType[A, Double]
-
-case class JCharT[A]()   extends JType[A, Char]
-case class JStrT[A]()    extends JType[A, String]
-
-case class JArrayT[A, I](elemSchema: Schema[A, JType[A, ?], I]) extends JType[A, Vector[I]]
+case class JArrayT[F[_], I](elemSchema: F[I]) extends JType[F, Vector[I]]
 
 object JType {
-  def jNull   = prim[JType[Unit, ?], Unit](JNullT())
-  def jBool   = prim[JType[Unit, ?], Boolean](JBoolT())
-  def jShort  = prim[JType[Unit, ?], Short](JShortT())
-  def jInt    = prim[JType[Unit, ?], Int](JIntT())
-  def jLong   = prim[JType[Unit, ?], Long](JLongT())
-  def jFloat  = prim[JType[Unit, ?], Float](JFloatT())
-  def jDouble = prim[JType[Unit, ?], Double](JDoubleT())
-  def jChar   = prim[JType[Unit, ?], Char](JCharT())
-  def jStr    = prim[JType[Unit, ?], String](JStrT())
-  def jArray[A, I](elem: Schema[A, JType[A, ?], I]) = prim[JType[A, ?], Vector[I]](JArrayT(elem))
+  type JSchema[A, I] = HMutu[JType, Schema[A, ?[_], ?], I]
+
+  def jNull   = prim(HMutu[JType, Schema[Unit, ?[_], ?], Unit](JNullT()))
+  def jBool   = prim(HMutu[JType, Schema[Unit, ?[_], ?], Boolean](JBoolT()))
+//  def jShort  = prim[JType[Unit, ?], Short](JShortT())
+//  def jInt    = prim[JType[Unit, ?], Int](JIntT())
+//  def jLong   = prim[JType[Unit, ?], Long](JLongT())
+//  def jFloat  = prim[JType[Unit, ?], Float](JFloatT())
+//  def jDouble = prim[JType[Unit, ?], Double](JDoubleT())
+//  def jChar   = prim[JType[Unit, ?], Char](JCharT())
+//  def jStr    = prim[JType[Unit, ?], String](JStrT())
+  def jArray[I](elem: Schema[Unit, JSchema[Unit, ?], I]) = 
+    prim(HMutu[JType, Schema[Unit, ?[_], ?], Vector[I]](JArrayT(elem)))
 }

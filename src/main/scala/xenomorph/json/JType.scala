@@ -21,32 +21,31 @@ sealed trait JType[F[_], I]
 
 case class JNullT[F[_]]()   extends JType[F, Unit]
 case class JBoolT[F[_]]()   extends JType[F, Boolean]
-//
-//case class JByteT[A]()   extends JType[A, Byte]
-//case class JShortT[A]()  extends JType[A, Short]
-//case class JIntT[A]()    extends JType[A, Int]
-//case class JLongT[A]()   extends JType[A, Long]
-//
-//case class JFloatT[A]()  extends JType[A, Float]
-//case class JDoubleT[A]() extends JType[A, Double]
-//
-//case class JCharT[A]()   extends JType[A, Char]
-//case class JStrT[A]()    extends JType[A, String]
+
+case class JByteT[F[_]]()   extends JType[F, Byte]
+case class JShortT[F[_]]()  extends JType[F, Short]
+case class JIntT[F[_]]()    extends JType[F, Int]
+case class JLongT[F[_]]()   extends JType[F, Long]
+
+case class JFloatT[F[_]]()  extends JType[F, Float]
+case class JDoubleT[F[_]]() extends JType[F, Double]
+
+case class JCharT[F[_]]()   extends JType[F, Char]
+case class JStrT[F[_]]()    extends JType[F, String]
 
 case class JArrayT[F[_], I](elemSchema: F[I]) extends JType[F, Vector[I]]
 
 object JType {
-  type JSchema[A, I] = HMutu[JType, Schema[A, ?[_], ?], I]
+  type JSchema[I] = HMutu[JType, Schema, I]
 
-  def jNull   = prim(HMutu[JType, Schema[Unit, ?[_], ?], Unit](JNullT()))
-  def jBool   = prim(HMutu[JType, Schema[Unit, ?[_], ?], Boolean](JBoolT()))
-//  def jShort  = prim[JType[Unit, ?], Short](JShortT())
-//  def jInt    = prim[JType[Unit, ?], Int](JIntT())
-//  def jLong   = prim[JType[Unit, ?], Long](JLongT())
-//  def jFloat  = prim[JType[Unit, ?], Float](JFloatT())
-//  def jDouble = prim[JType[Unit, ?], Double](JDoubleT())
-//  def jChar   = prim[JType[Unit, ?], Char](JCharT())
-//  def jStr    = prim[JType[Unit, ?], String](JStrT())
-  def jArray[I](elem: Schema[Unit, JSchema[Unit, ?], I]) = 
-    prim(HMutu[JType, Schema[Unit, ?[_], ?], Vector[I]](JArrayT(elem)))
+  def jNull   = prim(HMutu[JType, Schema, Unit](JNullT()))
+  def jBool   = prim(HMutu[JType, Schema, Boolean](JBoolT()))
+  def jShort  = prim(HMutu[JType, Schema, Short](JShortT()))
+  def jInt    = prim(HMutu[JType, Schema, Int](JIntT()))
+  def jLong   = prim(HMutu[JType, Schema, Long](JLongT()))
+  def jFloat  = prim(HMutu[JType, Schema, Float](JFloatT()))
+  def jDouble = prim(HMutu[JType, Schema, Double](JDoubleT()))
+  def jChar   = prim(HMutu[JType, Schema, Char](JCharT()))
+  def jStr    = prim(HMutu[JType, Schema, String](JStrT()))
+  def jArray[I](elem: Schema[JSchema, I]) = prim(HMutu[JType, Schema, Vector[I]](JArrayT(elem)))
 }

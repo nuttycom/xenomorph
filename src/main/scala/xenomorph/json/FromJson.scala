@@ -21,7 +21,6 @@ import argonaut.DecodeJson._
 import scalaz.~>
 import scalaz.Applicative
 import scalaz.FreeAp
-import scalaz.syntax.monad._
 import scalaz.syntax.std.boolean._
 
 import xenomorph._
@@ -33,10 +32,10 @@ trait FromJson[S[_]] {
 }
 
 object FromJson {
-  implicit def jSchemaFromJson[A, P[_]: FromJson]: FromJson[Schema[A, P, ?]] = new FromJson[Schema[A, P, ?]] {
-    def decoder = new (Schema[A, P, ?] ~> DecodeJson) {
-      override def apply[I](schema: Schema[A, P, I]) = {
-        HCofree.cataNT[SchemaF[P, ?[_], ?], DecodeJson](decoderAlg[P]).apply(schema.map(_ => ()))
+  implicit def jSchemaFromJson[P[_]: FromJson]: FromJson[Schema[P, ?]] = new FromJson[Schema[P, ?]] {
+    def decoder = new (Schema[P, ?] ~> DecodeJson) {
+      override def apply[I](schema: Schema[P, I]) = {
+        HFix.cataNT[SchemaF[P, ?[_], ?], DecodeJson](decoderAlg[P]).apply(schema)
       }
     }
   }

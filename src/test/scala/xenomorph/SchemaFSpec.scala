@@ -48,10 +48,10 @@ sealed trait Prim[A]
 case object StrPrim extends Prim[String]
 case object IntPrim extends Prim[Int]
 case object LongPrim extends Prim[Long]
-case class ArrPrim[I](elemSchema: Schema[Unit, Prim, I]) extends Prim[Vector[I]]
+case class ArrPrim[I](elemSchema: Schema[Prim, I]) extends Prim[Vector[I]]
 
 object Prim {
-  type PSchema[A] = Schema[Unit, Prim, A]
+  type PSchema[A] = Schema[Prim, A]
   def str: PSchema[String] = Schema.prim(StrPrim)
   def int: PSchema[Int] = Schema.prim(IntPrim)
   def long: PSchema[Long] = Schema.prim(LongPrim)
@@ -64,16 +64,16 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
   def is = """
   """
 
-  type TProp[O, A] = Schema.Prop[Unit, Prim, O, A]
-  implicit val profTProp: Profunctor[TProp] = propProfunctor[Unit, Prim]
+  type TProp[O, A] = Schema.Prop[Prim, O, A]
+  implicit val profTProp: Profunctor[TProp] = propProfunctor[Prim]
 
   val roleSchema = Schema.oneOf(
-    alt[Unit, Prim, Role, Unit](
+    alt[Prim, Role, Unit](
       "user", 
       Schema.empty,
       Role.user composeIso GenIso.unit[User.type]
     ) ::
-    alt[Unit, Prim, Role, Administrator](
+    alt[Prim, Role, Administrator](
       "administrator", 
       rec(
         ^(

@@ -216,13 +216,13 @@ final case class RecordSchema[P[_], F[_], I](props: FreeAp[PropSchema[I, F, ?], 
  *
  *  @tparam O The record type.
  *  @tparam F $FDefn
- *  @tparam A The type of the property value.
+ *  @tparam I The type of the property value.
  */
-sealed trait PropSchema[O, F[_], A] {
+sealed trait PropSchema[O, F[_], I] {
   def fieldName: String
-  def getter: Getter[O, A]
+  def getter: Getter[O, I]
 
-  def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, A]
+  def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, I]
 }
 
 /** Class describing a required property of a record.
@@ -233,13 +233,13 @@ sealed trait PropSchema[O, F[_], A] {
  * @param default Optional default value, for use in the case that a
  *        serialized form is missing the property.
  */
-final case class Required[O, F[_], A](
+final case class Required[O, F[_], I](
   fieldName: String, 
-  base: F[A], 
-  getter: Getter[O, A], 
-  default: Option[A]
-) extends PropSchema[O, F, A] {
-  def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, A] = 
+  base: F[I], 
+  getter: Getter[O, I], 
+  default: Option[I]
+) extends PropSchema[O, F, I] {
+  def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, I] = 
     Required(fieldName, nt(base), getter, default)
 }
 
@@ -252,19 +252,19 @@ final case class Required[O, F[_], A](
  * @param base Schema for the property's value type.
  * @param getter Getter lens from the record type to the property.
  */
-final case class Optional[O, F[_], A](
+final case class Optional[O, F[_], I](
   fieldName: String, 
-  base: F[A], 
-  getter: Getter[O, Option[A]]
-) extends PropSchema[O, F, Option[A]] {
-  def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, Option[A]] = 
+  base: F[I], 
+  getter: Getter[O, Option[I]]
+) extends PropSchema[O, F, Option[I]] {
+  def hfmap[G[_]](nt: F ~> G): PropSchema[O, G, Option[I]] = 
     Optional(fieldName, nt(base), getter)
 }
 
 object PropSchema {
   implicit def instances[O] = new HFunctor[PropSchema[O, ?[_], ?]] {
     def hfmap[M[_], N[_]](nt: M ~> N) = new (PropSchema[O, M, ?] ~> PropSchema[O, N, ?]) {
-      def apply[A](ps: PropSchema[O, M, A]): PropSchema[O, N, A] = ps.hfmap(nt)
+      def apply[I](ps: PropSchema[O, M, I]): PropSchema[O, N, I] = ps.hfmap(nt)
     }
   }
 

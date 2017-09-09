@@ -38,21 +38,6 @@ object HFunctor {
  */
 final case class HFix[F[_[_], _], I](hfix: Name[F[HFix[F, ?], I]])
 
-final case class HMutu[F[_[_], _], G[_[_], _], I](mutu: F[G[HMutu[F, G, ?], ?], I])
-
-final case class HEnvT[E, F[_[_], _], A[_], I](ask: E, fa: F[A, I])
-
-object HEnvT {
-  import HFunctor._
-
-  implicit def hfunctor[E, F[_[_], _]: HFunctor]: HFunctor[HEnvT[E, F, ?[_], ?]] =
-    new HFunctor[HEnvT[E, F, ?[_], ?]] {
-      def hfmap[M[_], N[_]](nt: M ~> N) = new (HEnvT[E, F, M, ?] ~> HEnvT[E, F, N, ?]) {
-        def apply[I](fm: HEnvT[E, F, M, I]) = HEnvT(fm.ask, fm.fa.hfmap[N](nt))
-      }
-    }
-}
-
 object HFix {
   import HFunctor._
 
@@ -98,3 +83,19 @@ object HFix {
       }
     } 
 }
+
+final case class HMutu[F[_[_], _], G[_[_], _], I](mutu: F[G[HMutu[F, G, ?], ?], I])
+
+final case class HEnvT[E, F[_[_], _], A[_], I](ask: E, fa: F[A, I])
+
+object HEnvT {
+  import HFunctor._
+
+  implicit def hfunctor[E, F[_[_], _]: HFunctor]: HFunctor[HEnvT[E, F, ?[_], ?]] =
+    new HFunctor[HEnvT[E, F, ?[_], ?]] {
+      def hfmap[M[_], N[_]](nt: M ~> N) = new (HEnvT[E, F, M, ?] ~> HEnvT[E, F, N, ?]) {
+        def apply[I](fm: HEnvT[E, F, M, I]) = HEnvT(fm.ask, fm.fa.hfmap[N](nt))
+      }
+    }
+}
+

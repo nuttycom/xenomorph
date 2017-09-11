@@ -1,15 +1,9 @@
 package xenomorph.tutorial
 
-//import argonaut.Json
-//import argonaut.Json._
-//import argonaut.DecodeJson
-//import argonaut.DecodeJson._
-
 import scalaz.FreeAp
 
 import org.specs2._
-//import org.scalacheck._
-//import org.scalacheck.Gen._
+import monocle.macros._
 
 import xenomorph.tutorial.schema5._
 
@@ -21,8 +15,14 @@ case class Person(
 
 sealed trait Role
 
-case object User extends Role
+case object User extends Role {
+  val prism = monocle.macros.GenPrism[Role, User.type]
+}
+
 case class Administrator(department: String) extends Role
+object Administrator {
+  val prism = monocle.macros.GenPrism[Role, Administrator]
+}
 
 class JSchemaSpec extends Specification with org.specs2.ScalaCheck {
   def is = s2"""
@@ -48,20 +48,12 @@ class JSchemaSpec extends Specification with org.specs2.ScalaCheck {
     Alt[Role, Unit](
       "user", 
       JObjT(FreeAp.pure(())), 
-      (_: Unit) => User, 
-      { 
-        case User => Some(())
-        case _ => None
-      }
+      User.prism composeIso GenIso.unit[User.type]
     ) ::
     Alt[Role, String](
-      "user", 
+      "admin", 
       JObjT(FreeAp.lift(PropSchema("department", JStrT, identity))), 
-      Administrator(_),
-      { 
-        case Administrator(dept) => Some(dept)
-        case _ => None
-      }
+      Administrator.prism composeIso GenIso[Administrator, String]
     ) :: Nil
   )
 }

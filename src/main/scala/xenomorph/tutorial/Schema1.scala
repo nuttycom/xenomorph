@@ -8,6 +8,9 @@ import argonaut.DecodeResult
 import argonaut.HCursor
 import argonaut.JsonObject
 
+import monocle.Prism
+
+import scalaz.~>
 import scalaz.NaturalTransformation
 import scalaz.Applicative
 import scalaz.FreeAp
@@ -23,21 +26,26 @@ object schema1 {
   case object JNumT extends JSchema[Long]
   case class JVecT[A](elemType: JSchema[A]) extends JSchema[Vector[A]]
 
-  def serialize[A](schema: JSchema[A], value: A): Json = {
-    schema match {
-      case JBoolT => jBool(value)
-      case JStrT  => jString(value)
-      case JNumT  => jNumber(value)
-      case JVecT(elemSchema) => jArray(value.map(serialize(elemSchema, _)).toList)
+  val serializer: (JSchema ~> (? => Json)) = new (JSchema ~> (? => Json)) {
+    def apply[A](schema: JSchema[A]): A => Json = {
+      schema match {
+        case JBoolT => jBool(_)
+        case JStrT  => jString(_)
+        case JNumT  => jNumber(_)
+        case JVecT(base) => 
+          value => jArray(value.map(serializer(base)).toList)
+      }
     }
   }
 
-  def decoder[A](schema: JSchema[A]): DecodeJson[A] = {
-    schema match {
-      case JBoolT => BooleanDecodeJson
-      case JStrT  => StringDecodeJson
-      case JNumT  => LongDecodeJson
-      case JVecT(elemSchema) => VectorDecodeJson(decoder(elemSchema))
+  val decoder: (JSchema ~> DecodeJson) = new (JSchema ~> DecodeJson) {
+    def apply[A](schema: JSchema[A]): DecodeJson[A] = {
+      schema match {
+        case JBoolT => BooleanDecodeJson
+        case JStrT  => StringDecodeJson
+        case JNumT  => LongDecodeJson
+        case JVecT(base) => VectorDecodeJson(decoder(base))
+      }
     }
   }
 }
@@ -134,26 +142,27 @@ object schema5 {
   case class PropSchema[O, A](fieldName: String, valueSchema: JSchema[A], accessor: O => A)
 
   case class JSumT[A](alternatives: List[Alt[A, B] forSome { type B }]) extends JSchema[A]
-  case class Alt[A, B](id: String, base: JSchema[B], review: B => A, preview: A => Option[B])
+  case class Alt[A, B](id: String, base: JSchema[B], prism: Prism[A, B])
 
   object JSchema {
-    def serialize[A](schema: JSchema[A], value: A): Json = {
-      schema match {
-        case JBoolT => jBool(value)
-        case JStrT  => jString(value)
-        case JNumT  => jNumber(value)
-        case JVecT(elemSchema) => jArray(value.map(serialize(elemSchema, _)).toList)
-        case JSumT(alts) =>
-          val results = alts flatMap {
-            case Alt(id, base, _, preview) =>
-              preview(value).map(serialize(base, _)).toList map { json =>
-                jObject(JsonObject.single(id, json))
-              }
-          }
+    val serializer: (JSchema ~> (? => Json)) = new (JSchema ~> (? => Json)) {
+      def apply[A](schema: JSchema[A]): A => Json = {
+        schema match {
+          case JBoolT => jBool(_)
+          case JStrT  => jString(_)
+          case JNumT  => jNumber(_)
+          case JVecT(elemSchema) => 
+            value => jArray(value.map(serializer(elemSchema)).toList)
+          case JSumT(alts) =>
+            value => alts.flatMap({
+              case Alt(id, base, prism) =>
+                prism.getOption(value).map(serializer(base)).toList map { json =>
+                  jObject(JsonObject.single(id, json))
+                }
+            }).head
 
-          results.head //yeah, I know
-
-        case JObjT(rb) => serializeObj(rb, value)
+          case JObjT(rb) => serializeObj(rb, _)
+        }
       }
     }
 
@@ -165,7 +174,7 @@ object schema5 {
               val elem: B = ps.accessor(value)
               for {
                 obj <- get
-                _ <- put(obj + (ps.fieldName, serialize(ps.valueSchema, elem)))
+                _ <- put(obj + (ps.fieldName, serializer(ps.valueSchema)(elem)))
               } yield elem
             }
           }
@@ -173,33 +182,35 @@ object schema5 {
       )
     }
 
-    def decoder[A](schema: JSchema[A]): DecodeJson[A] = {
-      schema match {
-        case JBoolT => BooleanDecodeJson
-        case JStrT  => StringDecodeJson
-        case JNumT  => LongDecodeJson
-        case JVecT(elemSchema) => VectorDecodeJson(decoder(elemSchema))
-        case JSumT(alts) =>
-          DecodeJson { (c: HCursor) =>
-            val results = for {
-              fields <- c.fields.toList
-              altResult <- alts flatMap {
-                case Alt(id, base, review, _) =>
-                  fields.exists(_ == id).option(
-                    c.downField(id).as(decoder(base)).map(review)
-                  ).toList
+    val decoder: (JSchema ~> DecodeJson) = new (JSchema ~> DecodeJson) {
+      def apply[A](schema: JSchema[A]): DecodeJson[A] = {
+        schema match {
+          case JBoolT => BooleanDecodeJson
+          case JStrT  => StringDecodeJson
+          case JNumT  => LongDecodeJson
+          case JVecT(elemSchema) => VectorDecodeJson(decoder(elemSchema))
+          case JSumT(alts) =>
+            DecodeJson { (c: HCursor) =>
+              val results = for {
+                fields <- c.fields.toList
+                altResult <- alts flatMap {
+                  case Alt(id, base, prism) =>
+                    fields.exists(_ == id).option(
+                      c.downField(id).as(decoder(base)).map(prism.reverseGet)
+                    ).toList
+                }
+              } yield altResult
+
+              val altIds = alts.map(_.id)
+              results match {
+                case x :: Nil => x
+                case Nil => DecodeResult.fail(s"No fields found matching any of ${altIds}", c.history)
+                case _ => DecodeResult.fail(s"More than one matching field found among ${altIds}", c.history)
               }
-            } yield altResult
-
-            val altIds = alts.map(_.id)
-            results match {
-              case x :: Nil => x
-              case Nil => DecodeResult.fail(s"No fields found matching any of ${altIds}", c.history)
-              case _ => DecodeResult.fail(s"More than one matching field found among ${altIds}", c.history)
             }
-          }
 
-        case JObjT(rb) => decodeObj(rb)
+          case JObjT(rb) => decodeObj(rb)
+        }
       }
     }
 

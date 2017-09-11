@@ -23,6 +23,7 @@ import monocle.Getter
 import monocle.Prism
 
 import xenomorph.HFix._
+import xenomorph.HFunctor._
 
 /** Data types and smart constructors which simplify the creation
  *  of schema values.
@@ -250,6 +251,12 @@ object Schema {
   def alt[P[_], I, J](id: String, base: Schema[P, J], prism: Prism[I, J]) = 
     Alt[Schema[P, ?], I, J](id, base, prism)
 
+  /** HAlgebra for primitive type constructor transformation.
+   */
+  def hfmapAlg[P[_], Q[_]](nt: P ~> Q) = new HAlgebra[SchemaF[P, ?[_], ?], Schema[Q, ?]] {
+    def apply[I](s: SchemaF[P, Schema[Q, ?], I]): Schema[Q, I] = hfix(s.pmap(nt))
+  }
+
   /** Constructs the HFunctor instance for a Schema.
    *
    *  An easier-to-read type signature for this function is below:
@@ -259,12 +266,7 @@ object Schema {
    *  }}}
    */
   implicit def hfunctor: HFunctor[Schema] = new HFunctor[Schema] {
-    def hfmap[P[_], Q[_]](nt: P ~> Q) = new (Schema[P, ?] ~> Schema[Q, ?]) { self =>
-      def apply[I](s: Schema[P, I]): Schema[Q, I] = {
-        val sf: SchemaF[Q, Schema[P, ?], I] = s.hfix.value.pmap(nt)
-        schema(sf.hfmap[Schema[Q, ?]](self))
-      }
-    }
+    def hfmap[P[_], Q[_]](nt: P ~> Q) = cataNT(hfmapAlg(nt))
   }
 
   /** Constructs the HFunctor instance for a Schema.

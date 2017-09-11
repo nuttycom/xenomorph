@@ -67,7 +67,7 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
   type TProp[O, A] = Schema.Prop[Prim, O, A]
   implicit val profTProp: Profunctor[TProp] = propProfunctor[Prim]
 
-  val roleSchema = Schema.oneOf(
+  val roleSchema: Schema[Prim, Role] = Schema.oneOf(
     alt[Prim, Role, Unit](
       "user", 
       Schema.empty,
@@ -85,7 +85,7 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
     ) :: Nil
   )
 
-  val personSchema = rec(
+  val personSchema: Schema[Prim, Person] = rec(
     ^^(
       required("name", Prim.str, Person.name.asGetter),
       profTProp.dimap(required("birthDate", Prim.long, Getter.id[Long])) {

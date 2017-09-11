@@ -36,7 +36,7 @@ object HFunctor {
 /** Fixpoint data type that can preserve a type index through
  *  its recursive step.
  */
-final case class HFix[F[_[_], _], I](hfix: Name[F[HFix[F, ?], I]])
+final case class HFix[F[_[_], _], I](unfix: Name[F[HFix[F, ?], I]])
 
 final case class HMutu[F[_[_], _], G[_[_], _], I](mutu: F[G[HMutu[F, G, ?], ?], I])
 
@@ -62,7 +62,7 @@ object HFix {
   def cataNT[F[_[_], _]: HFunctor, G[_]](alg: HAlgebra[F, G]): (HFix[F, ?] ~> G) = 
     new (HFix[F, ?] ~> G) { self => 
       def apply[I](f: HFix[F, I]): G[I] = {
-        alg.apply[I](f.hfix.value.hfmap[G](self))
+        alg.apply[I](f.unfix.value.hfmap[G](self))
       }
     }
 
@@ -73,20 +73,17 @@ object HFix {
     hfix[HEnvT[A, F, ?[_], ?], I](HEnvT(ask, fga))
 
   /**
-   * Discard the annotations from an HCofree structure.
+   * Algebra to discard the annotations from an HCofree structure.
    */
-  def forget[F[_[_], _]: HFunctor, A, I](f: HCofree[F, A, I]): HFix[F, I] =
-    cataNT[HEnvT[A, F, ?[_], ?], HFix[F, ?]](
-      new HAlgebra[HEnvT[A, F, ?[_], ?], HFix[F, ?]] {
-        def apply[I0](env: HEnvT[A, F, HFix[F, ?], I0]) = hfix(env.fa)
-      }
-    ).apply(f)
+  def forget[F[_[_], _], A] = new HAlgebra[HEnvT[A, F, ?[_], ?], HFix[F, ?]] {
+    def apply[I](env: HEnvT[A, F, HFix[F, ?], I]) = hfix(env.fa)
+  }
 
   /** Functor over the annotation type of an HCofree value */
   implicit def functor[F[_[_], _], I](implicit HF: HFunctor[F]): Functor[HCofree[F, ?, I]] = 
     new Functor[HCofree[F, ?, I]] { 
       def map[A, B](fa: HCofree[F, A, I])(f: A => B): HCofree[F, B, I] = {
-        val step = fa.hfix.value
+        val step = fa.unfix.value
         val hf = new (HCofree[F, A, ?] ~> HCofree[F, B, ?]) {
           def apply[I0](gcf: HCofree[F, A, I0]) = functor(HF).map(gcf)(f)
         }

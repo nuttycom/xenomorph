@@ -14,7 +14,6 @@
  */
 package xenomorph
 
-import scalaz.Profunctor
 import scalaz.syntax.apply._
 
 import org.specs2._
@@ -36,13 +35,14 @@ import xenomorph.Schema._
 
 sealed trait Role
 
-case object Role {
-  val user = GenPrism[Role, User.type]
-  val admin = GenPrism[Role, Administrator]
+case object User extends Role {
+  val prism = GenPrism[Role, User.type]
 }
 
-case object User extends Role
 @Lenses case class Administrator(department: String, subordinateCount: Int) extends Role
+object Administrator {
+  val prism = GenPrism[Role, Administrator]
+}
 
 sealed trait Prim[A]
 case object StrPrim extends Prim[String]
@@ -65,13 +65,12 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
   """
 
   type TProp[O, A] = Schema.Prop[Prim, O, A]
-  implicit val profTProp: Profunctor[TProp] = propProfunctor[Prim]
 
   val roleSchema: Schema[Prim, Role] = Schema.oneOf(
-    alt[Prim, Role, Unit](
+    alt[Prim, Role, User.type](
       "user", 
-      Schema.empty,
-      Role.user composeIso GenIso.unit[User.type]
+      Schema.const(User),
+      User.prism
     ) ::
     alt[Prim, Role, Administrator](
       "administrator", 
@@ -81,14 +80,14 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
           required("subordinateCount", Prim.int, Administrator.subordinateCount.asGetter)
         )(Administrator.apply _)
       ),
-      Role.admin
+      Administrator.prism
     ) :: Nil
   )
 
   val personSchema: Schema[Prim, Person] = rec(
     ^^(
       required("name", Prim.str, Person.name.asGetter),
-      profTProp.dimap(required("birthDate", Prim.long, Getter.id[Long])) {
+      propProfunctor[Prim].dimap(required("birthDate", Prim.long, Getter.id[Long])) {
         (_: Person).birthDate.getMillis
       } {
         new Instant(_: Long)

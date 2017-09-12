@@ -63,6 +63,9 @@ object ToJson {
 
           case s: RecordSchema[P, ? => Json, I] => 
             serializeObjF[P, I](s.props)
+
+          case s: IsoSchema[P, ? => Json, i0, I] =>
+            s.base.compose(s.iso.reverseGet(_))
         }
       }
     }

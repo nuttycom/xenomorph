@@ -20,7 +20,7 @@ import org.specs2._
 //import org.scalacheck._
 //import org.scalacheck.Gen._
 
-import monocle.Getter
+import monocle.Iso
 import monocle.macros._
 
 import org.joda.time.Instant
@@ -87,11 +87,10 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
   val personSchema: Schema[Prim, Person] = rec(
     ^^(
       required("name", Prim.str, Person.name.asGetter),
-      propProfunctor[Prim].dimap(required("birthDate", Prim.long, Getter.id[Long])) {
-        (_: Person).birthDate.getMillis
-      } {
-        new Instant(_: Long)
-      },
+      required(
+        "birthDate", Prim.long.composeIso(Iso(new Instant(_:Long))((_:Instant).getMillis)), 
+        Person.birthDate.asGetter
+      ),
       required("roles", Prim.arr(roleSchema), Person.roles.asGetter)
     )(Person.apply _)
   )

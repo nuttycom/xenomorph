@@ -66,6 +66,17 @@ object Schema {
    */
   type Prop[P[_], O, I] = FreeAp[PropSchema[O, Schema[P, ?], ?], I]
 
+  implicit def propApplicative[P[_], O]: Applicative[Prop[P, O, ?]] =
+    FreeAp.freeInstance[PropSchema[O, Schema[P, ?], ?]]
+
+  implicit def propProfunctor[P[_]]: Profunctor[Prop[P, ?, ?]] = new Profunctor[Prop[P, ?, ?]] {
+    def mapfst[O, I, N](prop: Prop[P, O, I])(f: N => O): Prop[P, N, I] = prop.hoist[PropSchema[N, Schema[P, ?], ?]](
+      PropSchema.contraNT[O, N, Schema[P, ?]](f)
+    )
+
+    def mapsnd[O, I, J](prop: Prop[P, O, I])(f: I => J): Prop[P, O, J] = prop.map(f)    
+  }
+
   /** The type of free applicative values which are used to capture the structure
    *  of record (product) types.
    *
@@ -75,9 +86,6 @@ object Schema {
    *          of a record - an object or a tuple.
    */
   type Props[P[_], R] = Prop[P, R, R]
-
-  implicit def propApplicative[P[_], O]: Applicative[Prop[P, O, ?]] =
-    FreeAp.freeInstance[PropSchema[O, Schema[P, ?], ?]]
 
   /** Lifts a SchemaF value into an unannotated Schema 
    *  
@@ -195,12 +203,12 @@ object Schema {
     )
   }
 
-  /** The unannotated empty record schema.
+  /** The unannotated empty record schema, representing a constant value.
    *
    *  @tparam P $PDefn
    */
-  def empty[P[_]]: Schema[P, Unit] = 
-    rec[P, Unit](FreeAp.pure[PropSchema[Unit, Schema[P, ?], ?], Unit](()))
+  def const[P[_], A](a: A): Schema[P, A] = 
+    rec[P, A](FreeAp.pure[PropSchema[A, Schema[P, ?], ?], A](a))
 
   /** Builds an un-annotated schema for the sum type `I` from a list of alternatives. 
    *
@@ -287,13 +295,5 @@ object Schema {
   //    }
   //  }
   //}
-
-  implicit def propProfunctor[P[_]]: Profunctor[Prop[P, ?, ?]] = new Profunctor[Prop[P, ?, ?]] {
-    def mapfst[O, I, N](prop: Prop[P, O, I])(f: N => O): Prop[P, N, I] = prop.hoist[PropSchema[N, Schema[P, ?], ?]](
-      PropSchema.contraNT[O, N, Schema[P, ?]](f)
-    )
-
-    def mapsnd[O, I, J](prop: Prop[P, O, I])(f: I => J): Prop[P, O, J] = prop.map(f)    
-  }
 }
 

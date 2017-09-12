@@ -17,6 +17,7 @@ package xenomorph
 import scalaz.~>
 import scalaz.FreeAp
 
+import monocle.Iso
 import monocle.Getter
 import monocle.Prism
 
@@ -276,4 +277,9 @@ object PropSchema {
       }
     }
   }
+}
+
+case class IsoSchema[P[_], F[_], I, J](base: F[I], iso: Iso[I, J]) extends SchemaF[P, F, J] {
+  def hfmap[G[_]](nt: F ~> G) = IsoSchema(nt(base), iso)
+  def pmap[Q[_]](nt: P ~> Q) = IsoSchema(base, iso)
 }

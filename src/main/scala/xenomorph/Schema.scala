@@ -19,6 +19,7 @@ import scalaz.Applicative
 import scalaz.Profunctor
 import scalaz.FreeAp
 
+import monocle.Iso
 import monocle.Getter
 import monocle.Prism
 
@@ -277,23 +278,10 @@ object Schema {
     def hfmap[P[_], Q[_]](nt: P ~> Q) = cataNT(hfmapAlg(nt))
   }
 
-  /** Constructs the HFunctor instance for a Schema.
-   *
-   *  An easier-to-read type signature for this function is below:
-   *
-   *  {{{
-   *  implicit def hfunctor[A]: HFunctor[Schema[A, ?[_], ?]]
-   *  }}}
-   *
-   *  @tparam A $ADefn
-   */
-  //implicit def hfunctor[A]: HFunctor[Schema[A, ?[_], ?]] = new HFunctor[Schema[A, ?[_], ?]] {
-  //  def hfmap[P[_], Q[_]](nt: P ~> Q) = new (Schema[A, P, ?] ~> Schema[A, Q, ?]) { self =>
-  //    def apply[I](s: Schema[A, P, I]): Schema[A, Q, I] = {
-  //      val sf: SchemaF[Q, Schema[A, P, ?], I] = s.hfix.value.fa.pmap(nt)
-  //      schema(s.hfix.value.ask, sf.hfmap[Schema[A, Q, ?]](self))
-  //    }
-  //  }
-  //}
+  implicit class SchemaOps[P[_], I](base: Schema[P, I]) {
+    def composeIso[J](iso: Iso[I, J]): Schema[P, J] = {
+      schema(IsoSchema[P, Schema[P, ?], I, J](base, iso))
+    }
+  }
 }
 

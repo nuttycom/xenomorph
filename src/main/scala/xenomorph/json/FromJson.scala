@@ -68,6 +68,9 @@ object FromJson {
 
         case RecordSchema(rb) => 
           decodeObj(rb)
+
+        case IsoSchema(base, iso) => 
+          base.map(iso.get _)
       }
   }
 

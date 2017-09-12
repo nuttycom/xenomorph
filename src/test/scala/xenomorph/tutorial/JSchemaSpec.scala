@@ -1,9 +1,9 @@
 package xenomorph.tutorial
 
 import scalaz.FreeAp
+import scalaz.syntax.apply._
 
 import org.specs2._
-import monocle.macros._
 
 import xenomorph.tutorial.schema5._
 
@@ -19,7 +19,7 @@ case object User extends Role {
   val prism = monocle.macros.GenPrism[Role, User.type]
 }
 
-case class Administrator(department: String) extends Role
+final case class Administrator(department: String, subordinateCount: Long) extends Role
 object Administrator {
   val prism = monocle.macros.GenPrism[Role, Administrator]
 }
@@ -45,15 +45,20 @@ class JSchemaSpec extends Specification with org.specs2.ScalaCheck {
   }
 
   val roleSchema = JSumT(
-    Alt[Role, Unit](
+    Alt[Role, User.type](
       "user", 
-      JObjT(FreeAp.pure(())), 
-      User.prism composeIso GenIso.unit[User.type]
+      JObjT[User.type](FreeAp.pure(User)), 
+      User.prism 
     ) ::
-    Alt[Role, String](
+    Alt[Role, Administrator](
       "admin", 
-      JObjT(FreeAp.lift(PropSchema("department", JStrT, identity))), 
-      Administrator.prism composeIso GenIso[Administrator, String]
+      JObjT(
+        ^(
+          FreeAp.lift(PropSchema("department", JStrT, (_:Administrator).department)),
+          FreeAp.lift(PropSchema("subordinateCount", JNumT, (_:Administrator).subordinateCount)),
+        )(Administrator.apply _)
+      ),
+      Administrator.prism 
     ) :: Nil
   )
 }

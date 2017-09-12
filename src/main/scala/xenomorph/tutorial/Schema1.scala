@@ -84,16 +84,11 @@ object schema2 {
         ff match {
           case PureProps(f) => map(fa)(f)
           case aprb: ApProps[O, (A => B), i] =>
-            ApProps(
-              aprb.hd,
-              ap(fa) {
-                map[i => (A => B), A => (i => B)](aprb.tl) {
-                  (g: i => (A => B)) => { (a: A) => { (i: i) => g(i)(a) } } // this is just flip
-                }
-              }
-            )
+            ApProps(aprb.hd, ap(fa)(map(aprb.tl)(flip[i, A, B])))
         }
       }
+
+      def flip[I, A, B](f: I => (A => B)) = (a: A) => (i: I) => f(i)(a)
     }
   }
 }
@@ -173,8 +168,7 @@ object schema5 {
             def apply[B](ps: PropSchema[A, B]): State[JsonObject, B] = {
               val elem: B = ps.accessor(value)
               for {
-                obj <- get
-                _ <- put(obj + (ps.fieldName, serializer(ps.valueSchema)(elem)))
+                _ <- modify((_: JsonObject) + (ps.fieldName, serializer(ps.valueSchema)(elem)))
               } yield elem
             }
           }

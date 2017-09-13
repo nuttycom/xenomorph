@@ -11,6 +11,7 @@ import argonaut.JsonObject
 import scalaz.~>
 import scalaz.Applicative
 import scalaz.Coproduct
+import scalaz.Coproduct._
 import scalaz.FreeAp
 import scalaz.State
 import scalaz.State._
@@ -173,7 +174,41 @@ object primCoproduct {
       }
     }
   }
+
+  sealed trait MyPrim[A]
+  case object MyInt extends MyPrim[Int]
+  case object MyStr extends MyPrim[String]
+
+  implicit object MyPrimToJson extends ToJson[MyPrim] {
+    val serializer = new (MyPrim ~> (? => Json)) {
+      def apply[A](p: MyPrim[A]) = p match {
+        case MyInt => jNumber(_)
+        case MyStr => jString(_)
+      }
+    }
+  }
+
+  sealed trait YourPrim[A]
+  case object YourInt extends YourPrim[Int]
+  case object YourDouble extends YourPrim[Double]
+
+  implicit object YourPrimToJson extends ToJson[YourPrim] {
+    val serializer = new (YourPrim ~> (? => Json)) {
+      def apply[A](p: YourPrim[A]) = p match {
+        case YourInt => (i: Int) => jString(s"i${i}")
+        case YourDouble => (d: Double) => jString(s"d${d}")
+      }
+    }
+  }
+
+  type Both[A] = Coproduct[MyPrim, YourPrim, A]
+  def int: Both[Int] = rightc(YourInt)
+  def double: Both[Double] = rightc(YourDouble)
+  def str: Both[String] = leftc(MyStr)
+
+  implicitly[ToJson[Both]]
 }
+
 
 object fixpoints {
   case class HFix[F[_[_], _], I](f: F[HFix[F, ?], I])

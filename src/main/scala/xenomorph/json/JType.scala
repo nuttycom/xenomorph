@@ -97,5 +97,4 @@ object JType {
 
     val sFromJ: FromJson[Schema[JSchema, ?]] = FromJson.schemaFromJson(self)
   }
-
 }

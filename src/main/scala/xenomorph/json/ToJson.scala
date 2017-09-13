@@ -23,6 +23,7 @@ import scalaz.State
 import scalaz.State._
 import scalaz.FreeAp
 import scalaz.syntax.monad._
+import scalaz.syntax.foldable._
 import scalaz.syntax.std.option._
 
 import xenomorph._
@@ -51,7 +52,7 @@ object ToJson {
 
           case s: OneOfSchema[P, ? => Json, I] => 
             (value: I) => {
-              val results = s.alts flatMap { 
+              val results = s.alts.toList flatMap { 
                 case alt: Alt[? => Json, I, i] => {
                   alt.prism.getOption(value).map(alt.base).toList map { json => 
                     jObject(JsonObject.single(alt.id, json))

@@ -16,6 +16,7 @@ package xenomorph
 
 import scalaz.~>
 import scalaz.Applicative
+import scalaz.NonEmptyList
 import scalaz.Profunctor
 import scalaz.FreeAp
 
@@ -226,7 +227,7 @@ object Schema {
    *  @tparam P $PDefn
    *  @tparam I $IDefn
    */
-  def oneOf[P[_], I](alts: List[Alt[Schema[P, ?], I, J] forSome {type J}]): Schema[P, I] = 
+  def oneOf[P[_], I](alts: NonEmptyList[Alt[Schema[P, ?], I, J] forSome {type J}]): Schema[P, I] = 
     schema(OneOfSchema[P, Schema[P, ?], I](alts))
 
   /** Builds an annotated schema for the sum type `I` from a list of alternatives. 

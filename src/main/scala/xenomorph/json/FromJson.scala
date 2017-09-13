@@ -22,6 +22,7 @@ import scalaz.~>
 import scalaz.Coproduct
 import scalaz.Applicative
 import scalaz.FreeAp
+import scalaz.syntax.foldable._
 import scalaz.syntax.std.boolean._
 
 import xenomorph._
@@ -51,13 +52,13 @@ object FromJson {
           DecodeJson { (c: HCursor) => 
             val results = for {
               fields <- c.fields.toList
-              altResult <- alts flatMap {
+              altResult <- alts.toList flatMap {
                 case Alt(id, base, prism) =>
                   fields.exists(_ == id).option(
                     c.downField(id).as(base).map(prism.reverseGet)
                   ).toList
               }
-            } yield altResult 
+            } yield altResult
 
             val altIds = alts.map(_.id)
             results match {

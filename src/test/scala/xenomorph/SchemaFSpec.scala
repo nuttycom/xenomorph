@@ -14,6 +14,7 @@
  */
 package xenomorph
 
+import scalaz.NonEmptyList
 import scalaz.syntax.apply._
 
 import org.specs2._
@@ -67,21 +68,23 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
   type TProp[O, A] = Schema.Prop[Prim, O, A]
 
   val roleSchema: Schema[Prim, Role] = Schema.oneOf(
-    alt[Prim, Role, User.type](
-      "user", 
-      Schema.const(User),
-      User.prism
-    ) ::
-    alt[Prim, Role, Administrator](
-      "administrator", 
-      rec(
-        ^(
-          required("department", Prim.str, Administrator.department.asGetter),
-          required("subordinateCount", Prim.int, Administrator.subordinateCount.asGetter)
-        )(Administrator.apply _)
+    NonEmptyList(
+      alt[Prim, Role, User.type](
+        "user", 
+        Schema.const(User),
+        User.prism
       ),
-      Administrator.prism
-    ) :: Nil
+      alt[Prim, Role, Administrator](
+        "administrator", 
+        rec(
+          ^(
+            required("department", Prim.str, Administrator.department.asGetter),
+            required("subordinateCount", Prim.int, Administrator.subordinateCount.asGetter)
+          )(Administrator.apply _)
+        ),
+        Administrator.prism
+      )
+    )
   )
 
   val personSchema: Schema[Prim, Person] = rec(

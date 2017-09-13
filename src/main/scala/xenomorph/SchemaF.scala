@@ -16,6 +16,7 @@ package xenomorph
 
 import scalaz.~>
 import scalaz.FreeAp
+import scalaz.NonEmptyList
 
 import monocle.Iso
 import monocle.Getter
@@ -163,7 +164,7 @@ final case class PrimSchema[P[_], F[_], I](prim: P[I]) extends SchemaF[P, F, I] 
  *  @tparam F $FDefn
  *  @tparam I $IDefn
  */
-final case class OneOfSchema[P[_], F[_], I](alts: List[Alt[F, I, I0] forSome { type I0 }]) extends SchemaF[P, F, I] {
+final case class OneOfSchema[P[_], F[_], I](alts: NonEmptyList[Alt[F, I, I0] forSome { type I0 }]) extends SchemaF[P, F, I] {
   def hfmap[G[_]](nt: F ~> G) = OneOfSchema[P, G, I](alts.map(_.hfmap(nt)))
   def pmap[Q[_]](nt: P ~> Q) = OneOfSchema[Q, F, I](alts)
 }

@@ -33,7 +33,7 @@ trait FromJson[S[_]] {
 }
 
 object FromJson {
-  implicit def jSchemaFromJson[P[_]: FromJson]: FromJson[Schema[P, ?]] = new FromJson[Schema[P, ?]] {
+  implicit def schemaFromJson[P[_]: FromJson]: FromJson[Schema[P, ?]] = new FromJson[Schema[P, ?]] {
     def decoder = new (Schema[P, ?] ~> DecodeJson) {
       override def apply[I](schema: Schema[P, I]) = {
         HFix.cataNT[SchemaF[P, ?[_], ?], DecodeJson](decoderAlg[P]).apply(schema)

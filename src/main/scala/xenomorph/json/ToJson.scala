@@ -34,7 +34,7 @@ trait ToJson[S[_]] {
 }
 
 object ToJson {
-  implicit def jSchemaToJson[P[_]: ToJson]: ToJson[Schema[P, ?]] = new ToJson[Schema[P, ?]] {
+  implicit def schemaToJson[P[_]: ToJson]: ToJson[Schema[P, ?]] = new ToJson[Schema[P, ?]] {
     def serialize = new (Schema[P, ?] ~> (? => Json)) {
       override def apply[I](schema: Schema[P, I]) = {
         HFix.cataNT[SchemaF[P, ?[_], ?], ? => Json](serializeAlg).apply(schema)

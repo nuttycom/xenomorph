@@ -81,9 +81,9 @@ object HFix {
     } 
 }
 
-final case class HMutu[F[_[_], _], G[_[_], _], I](mutu: F[G[HMutu[F, G, ?], ?], I])
+final case class HMutu[F[_[_], _], G[_[_], _], I](unmutu: F[G[HMutu[F, G, ?], ?], I])
 
-final case class HEnvT[E, F[_[_], _], A[_], I](ask: E, fa: F[A, I])
+final case class HEnvT[E, F[_[_], _], G[_], I](ask: E, fa: F[G, I])
 
 object HEnvT {
   import HFunctor._

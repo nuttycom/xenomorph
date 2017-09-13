@@ -18,6 +18,7 @@ import argonaut._
 import argonaut.Json._
 
 import scalaz.~>
+import scalaz.Coproduct
 import scalaz.State
 import scalaz.State._
 import scalaz.FreeAp
@@ -92,5 +93,16 @@ object ToJson {
         }
       ).exec(JsonObject.empty)
     )
+  }
+  
+  implicit def coproductToJson[P[_]: ToJson, Q[_]: ToJson] = new ToJson[Coproduct[P, Q, ?]] {
+    val serialize = new (Coproduct[P, Q, ?] ~> (? => Json)) {
+      def apply[A](p: Coproduct[P, Q, A]): A => Json = {
+        p.run.fold(
+          implicitly[ToJson[P]].serialize(_),
+          implicitly[ToJson[Q]].serialize(_)
+        )
+      }
+    }
   }
 }

@@ -19,6 +19,7 @@ import argonaut._
 import argonaut.DecodeJson._
 
 import scalaz.~>
+import scalaz.Coproduct
 import scalaz.Applicative
 import scalaz.FreeAp
 import scalaz.syntax.std.boolean._
@@ -93,5 +94,16 @@ object FromJson {
         }
       }
     )
+  }
+
+  implicit def coproductFromJson[P[_]: FromJson, Q[_]: FromJson] = new FromJson[Coproduct[P, Q, ?]] {
+    val decoder = new (Coproduct[P, Q, ?] ~> DecodeJson) {
+      def apply[A](p: Coproduct[P, Q, A]): DecodeJson[A] = {
+        p.run.fold(
+          implicitly[FromJson[P]].decoder(_),
+          implicitly[FromJson[Q]].decoder(_),
+        )
+      }
+    }
   }
 }

@@ -35,6 +35,10 @@ trait ToJson[S[_]] {
 }
 
 object ToJson {
+  implicit class ToJsonOps[F[_], A](fa: F[A]) {
+    def toJson(a: A)(implicit TJ: ToJson[F]): Json = TJ.serialize(fa)(a)
+  }
+
   implicit def schemaToJson[P[_]: ToJson]: ToJson[Schema[P, ?]] = new ToJson[Schema[P, ?]] {
     def serialize = new (Schema[P, ?] ~> (? => Json)) {
       override def apply[I](schema: Schema[P, I]) = {

@@ -27,6 +27,9 @@ import monocle.macros._
 import org.joda.time.Instant
 
 import xenomorph.Schema._
+import xenomorph.json.JType._
+import xenomorph.json.ToJson._
+import xenomorph.json.FromJson._
 
 @Lenses case class Person(
   name: String, 
@@ -45,41 +48,29 @@ object Administrator {
   val prism = GenPrism[Role, Administrator]
 }
 
-sealed trait Prim[A]
-case object StrPrim extends Prim[String]
-case object IntPrim extends Prim[Int]
-case object LongPrim extends Prim[Long]
-case class ArrPrim[I](elemSchema: Schema[Prim, I]) extends Prim[Vector[I]]
-
-object Prim {
-  type PSchema[A] = Schema[Prim, A]
-  def str: PSchema[String] = Schema.prim(StrPrim)
-  def int: PSchema[Int] = Schema.prim(IntPrim)
-  def long: PSchema[Long] = Schema.prim(LongPrim)
-  def arr[A](elem: PSchema[A]): PSchema[Vector[A]] = 
-    Schema.prim[Prim, Vector[A]](ArrPrim(elem))
-}
-
-
 class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
-  def is = """
+  def is = s2"""
+  Serialization of values to JSON should
+    serialize a value to JSON $toJson
+    read a value from JSON $fromJson
   """
+//    round-trip values produced by a generator $gen
 
-  type TProp[O, A] = Schema.Prop[Prim, O, A]
+  type TProp[O, A] = Schema.Prop[JSchema, O, A]
 
-  val roleSchema: Schema[Prim, Role] = Schema.oneOf(
+  val roleSchema: Schema[JSchema, Role] = Schema.oneOf(
     NonEmptyList(
-      alt[Prim, Role, User.type](
+      alt[JSchema, Role, User.type](
         "user", 
         Schema.const(User),
         User.prism
       ),
-      alt[Prim, Role, Administrator](
+      alt[JSchema, Role, Administrator](
         "administrator", 
         rec(
           ^(
-            required("department", Prim.str, Administrator.department.asGetter),
-            required("subordinateCount", Prim.int, Administrator.subordinateCount.asGetter)
+            required("department", jStr, Administrator.department.asGetter),
+            required("subordinateCount", jInt, Administrator.subordinateCount.asGetter)
           )(Administrator.apply _)
         ),
         Administrator.prism
@@ -87,14 +78,36 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
     )
   )
 
-  val personSchema: Schema[Prim, Person] = rec(
+  val personSchema: Schema[JSchema, Person] = rec(
     ^^(
-      required("name", Prim.str, Person.name.asGetter),
+      required("name", jStr, Person.name.asGetter),
       required(
-        "birthDate", Prim.long.composeIso(Iso(new Instant(_:Long))((_:Instant).getMillis)), 
+        "birthDate", jLong.composeIso(Iso(new Instant(_:Long))((_:Instant).getMillis)), 
         Person.birthDate.asGetter
       ),
-      required("roles", Prim.arr(roleSchema), Person.roles.asGetter)
+      required("roles", jArray(roleSchema), Person.roles.asGetter)
     )(Person.apply _)
   )
+
+  def toJson = {
+    val p = Person(
+      "Kris Nuttycombe", 
+      new Instant(20147028000l), 
+      Vector(Administrator("windmill-tilting", 0))
+    )
+
+    val result = personSchema.toJson(p) 
+    result.toString must_== """{"roles":[{"administrator":{"subordinateCount":0,"department":"windmill-tilting"}}],"birthDate":20147028000,"name":"Kris Nuttycombe"}"""
+  }
+
+  def fromJson = {
+    val p = Person(
+      "Kris Nuttycombe", 
+      new Instant(20147028000l), 
+      Vector(Administrator("windmill-tilting", 0))
+    )
+
+    val result = personSchema.toJson(p) 
+    personSchema.fromJson(result).toOption must_== Some(p)
+  }
 }

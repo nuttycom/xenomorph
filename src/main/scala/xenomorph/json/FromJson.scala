@@ -34,6 +34,12 @@ trait FromJson[S[_]] {
 }
 
 object FromJson {
+  implicit class FromJsonOps[F[_], A](fa: F[A]) {
+    def fromJson(a: Json)(implicit FJ: FromJson[F]): DecodeResult[A] = {
+      FJ.decoder(fa).decodeJson(a)
+    }
+  }
+
   implicit def schemaFromJson[P[_]: FromJson]: FromJson[Schema[P, ?]] = new FromJson[Schema[P, ?]] {
     def decoder = new (Schema[P, ?] ~> DecodeJson) {
       override def apply[I](schema: Schema[P, I]) = {

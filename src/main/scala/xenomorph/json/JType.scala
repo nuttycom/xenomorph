@@ -61,18 +61,18 @@ object JType {
   implicit val toJson: ToJson[JSchema] = new ToJson[JSchema] { self => 
     val serialize = new (JSchema ~> (? => Json)) {
       def apply[I](s: JSchema[I]): I => Json = s.unmutu match {
-        case _: JNullT[Schema[JSchema, ?]]    => (_: I) => Json.jNull
-        case _: JBoolT[Schema[JSchema, ?]]    => Json.jBool(_)
-        case _: JByteT[Schema[JSchema, ?]]    => i => Json.jNumber(i.toInt)
-        case _: JShortT[Schema[JSchema, ?]]   => i => Json.jNumber(i.toInt)
-        case _: JIntT[Schema[JSchema, ?]]     => Json.jNumber(_)
-        case _: JLongT[Schema[JSchema, ?]]    => Json.jNumber(_)
-        case _: JFloatT[Schema[JSchema, ?]]   => f => Json.jNumberOrString(f.toDouble)
-        case _: JDoubleT[Schema[JSchema, ?]]  => Json.jNumberOrString(_)
-        case _: JCharT[Schema[JSchema, ?]]    => c => Json.jString(c.toString)
-        case _: JStrT[Schema[JSchema, ?]]     => Json.jString(_)
-        case arr: JArrayT[Schema[JSchema, ?], i] => 
-          xs => Json.jArray(xs.map(sToJ.serialize(arr.elem)).toList)
+        case JNullT()    => (_: I) => Json.jNull
+        case JBoolT()    => Json.jBool(_)
+        case JByteT()    => i => Json.jNumber(i.toInt)
+        case JShortT()   => i => Json.jNumber(i.toInt)
+        case JIntT()     => Json.jNumber(_)
+        case JLongT()    => Json.jNumber(_)
+        case JFloatT()   => f => Json.jNumberOrString(f.toDouble)
+        case JDoubleT()  => Json.jNumberOrString(_)
+        case JCharT()    => c => Json.jString(c.toString)
+        case JStrT()     => Json.jString(_)
+        case JArrayT(elem) => 
+          xs => Json.jArray(xs.map(sToJ.serialize(elem)).toList)
       }
     }
 
@@ -82,18 +82,18 @@ object JType {
   implicit val fromJson: FromJson[JSchema] = new FromJson[JSchema] { self => 
     val decoder = new (JSchema ~> DecodeJson) {
       def apply[I](s: JSchema[I]): DecodeJson[I] = s.unmutu match {
-        case _: JNullT[Schema[JSchema, ?]]    => UnitDecodeJson
-        case _: JBoolT[Schema[JSchema, ?]]    => BooleanDecodeJson
-        case _: JByteT[Schema[JSchema, ?]]    => IntDecodeJson.map(_.toByte)
-        case _: JShortT[Schema[JSchema, ?]]   => ShortDecodeJson
-        case _: JIntT[Schema[JSchema, ?]]     => IntDecodeJson
-        case _: JLongT[Schema[JSchema, ?]]    => LongDecodeJson
-        case _: JFloatT[Schema[JSchema, ?]]   => FloatDecodeJson
-        case _: JDoubleT[Schema[JSchema, ?]]  => DoubleDecodeJson
-        case _: JCharT[Schema[JSchema, ?]]    => CharDecodeJson
-        case _: JStrT[Schema[JSchema, ?]]     => StringDecodeJson
-        case arr: JArrayT[Schema[JSchema, ?], i] => 
-          ListDecodeJson(sFromJ.decoder(arr.elem)).map(_.toVector)
+        case JNullT()    => UnitDecodeJson
+        case JBoolT()    => BooleanDecodeJson
+        case JByteT()    => IntDecodeJson.map(_.toByte)
+        case JShortT()   => ShortDecodeJson
+        case JIntT()     => IntDecodeJson
+        case JLongT()    => LongDecodeJson
+        case JFloatT()   => FloatDecodeJson
+        case JDoubleT()  => DoubleDecodeJson
+        case JCharT()    => CharDecodeJson
+        case JStrT()     => StringDecodeJson
+        case JArrayT(elem) => 
+          ListDecodeJson(sFromJ.decoder(elem)).map(_.toVector)
       }
     }
 
@@ -106,16 +106,16 @@ object JType {
     import org.scalacheck.Arbitrary._
     def toGen = new (JSchema ~> Gen) {
       def apply[A](s: JSchema[A]): Gen[A] = s.unmutu match {
-        case _: JNullT[Schema[JSchema, ?]]    => arbitrary[Unit]
-        case _: JBoolT[Schema[JSchema, ?]]    => arbitrary[Boolean]
-        case _: JByteT[Schema[JSchema, ?]]    => arbitrary[Byte]
-        case _: JShortT[Schema[JSchema, ?]]   => arbitrary[Short]
-        case _: JIntT[Schema[JSchema, ?]]     => arbitrary[Int]
-        case _: JLongT[Schema[JSchema, ?]]    => arbitrary[Long]
-        case _: JFloatT[Schema[JSchema, ?]]   => arbitrary[Float]
-        case _: JDoubleT[Schema[JSchema, ?]]  => arbitrary[Double]
-        case _: JCharT[Schema[JSchema, ?]]    => arbitrary[Char]
-        case _: JStrT[Schema[JSchema, ?]]     => arbitrary[String]
+        case JNullT()    => arbitrary[Unit]
+        case JBoolT()    => arbitrary[Boolean]
+        case JByteT()    => arbitrary[Byte]
+        case JShortT()   => arbitrary[Short]
+        case JIntT()     => arbitrary[Int]
+        case JLongT()    => arbitrary[Long]
+        case JFloatT()   => arbitrary[Float]
+        case JDoubleT()  => arbitrary[Double]
+        case JCharT()    => arbitrary[Char]
+        case JStrT()     => arbitrary[String]
         case arr: JArrayT[Schema[JSchema, ?], i] => 
           containerOf[Vector, i](arr.elem.toGen)
       }

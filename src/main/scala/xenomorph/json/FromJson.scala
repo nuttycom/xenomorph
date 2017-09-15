@@ -19,8 +19,10 @@ import argonaut._
 import argonaut.DecodeJson._
 
 import scalaz.~>
+import scalaz.Coproduct
 import scalaz.Applicative
 import scalaz.FreeAp
+import scalaz.syntax.foldable._
 import scalaz.syntax.std.boolean._
 
 import xenomorph._
@@ -32,7 +34,13 @@ trait FromJson[S[_]] {
 }
 
 object FromJson {
-  implicit def jSchemaFromJson[P[_]: FromJson]: FromJson[Schema[P, ?]] = new FromJson[Schema[P, ?]] {
+  implicit class FromJsonOps[F[_], A](fa: F[A]) {
+    def fromJson(a: Json)(implicit FJ: FromJson[F]): DecodeResult[A] = {
+      FJ.decoder(fa).decodeJson(a)
+    }
+  }
+
+  implicit def schemaFromJson[P[_]: FromJson]: FromJson[Schema[P, ?]] = new FromJson[Schema[P, ?]] {
     def decoder = new (Schema[P, ?] ~> DecodeJson) {
       override def apply[I](schema: Schema[P, I]) = {
         HFix.cataNT[SchemaF[P, ?[_], ?], DecodeJson](decoderAlg[P]).apply(schema)
@@ -50,13 +58,13 @@ object FromJson {
           DecodeJson { (c: HCursor) => 
             val results = for {
               fields <- c.fields.toList
-              altResult <- alts flatMap {
+              altResult <- alts.toList flatMap {
                 case Alt(id, base, prism) =>
                   fields.exists(_ == id).option(
                     c.downField(id).as(base).map(prism.reverseGet)
                   ).toList
               }
-            } yield altResult 
+            } yield altResult
 
             val altIds = alts.map(_.id)
             results match {
@@ -93,5 +101,16 @@ object FromJson {
         }
       }
     )
+  }
+
+  implicit def coproductFromJson[P[_]: FromJson, Q[_]: FromJson] = new FromJson[Coproduct[P, Q, ?]] {
+    val decoder = new (Coproduct[P, Q, ?] ~> DecodeJson) {
+      def apply[A](p: Coproduct[P, Q, A]): DecodeJson[A] = {
+        p.run.fold(
+          implicitly[FromJson[P]].decoder(_),
+          implicitly[FromJson[Q]].decoder(_),
+        )
+      }
+    }
   }
 }

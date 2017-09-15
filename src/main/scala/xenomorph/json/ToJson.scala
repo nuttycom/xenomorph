@@ -18,10 +18,11 @@ import argonaut._
 import argonaut.Json._
 
 import scalaz.~>
+import scalaz.Coproduct
 import scalaz.State
 import scalaz.State._
 import scalaz.FreeAp
-import scalaz.syntax.monad._
+import scalaz.syntax.foldable._
 import scalaz.syntax.std.option._
 
 import xenomorph._
@@ -33,7 +34,11 @@ trait ToJson[S[_]] {
 }
 
 object ToJson {
-  implicit def jSchemaToJson[P[_]: ToJson]: ToJson[Schema[P, ?]] = new ToJson[Schema[P, ?]] {
+  implicit class ToJsonOps[F[_], A](fa: F[A]) {
+    def toJson(a: A)(implicit TJ: ToJson[F]): Json = TJ.serialize(fa)(a)
+  }
+
+  implicit def schemaToJson[P[_]: ToJson]: ToJson[Schema[P, ?]] = new ToJson[Schema[P, ?]] {
     def serialize = new (Schema[P, ?] ~> (? => Json)) {
       override def apply[I](schema: Schema[P, I]) = {
         HFix.cataNT[SchemaF[P, ?[_], ?], ? => Json](serializeAlg).apply(schema)
@@ -50,7 +55,7 @@ object ToJson {
 
           case s: OneOfSchema[P, ? => Json, I] => 
             (value: I) => {
-              val results = s.alts flatMap { 
+              val results = s.alts.toList flatMap { 
                 case alt: Alt[? => Json, I, i] => {
                   alt.prism.getOption(value).map(alt.base).toList map { json => 
                     jObject(JsonObject.single(alt.id, json))
@@ -76,21 +81,30 @@ object ToJson {
         new (PropSchema[I, ? => Json, ?] ~> State[JsonObject, ?]) {
           def apply[B](ps: PropSchema[I, ? => Json, B]): State[JsonObject, B] = {
             for {
-              obj <- get
-              _ <- ps match {
-                case req: Required[I, ? => Json, i] => //(field, base, getter, _) => 
-                  put(obj + (req.fieldName, req.base(req.getter.get(value))))
+              _ <- modify { (obj: JsonObject) => 
+                ps match {
+                  case req: Required[I, ? => Json, i] => //(field, base, getter, _) => 
+                    obj + (req.fieldName, req.base(req.getter.get(value)))
 
-                case opt: Optional[I, ? => Json, i] =>
-                  opt.getter.get(value).cata(
-                    v => put(obj + (opt.fieldName, opt.base(v))),
-                    ().pure[State[JsonObject, ?]]
-                  )
+                  case opt: Optional[I, ? => Json, i] =>
+                    opt.getter.get(value).cata(v => obj + (opt.fieldName, opt.base(v)), obj)
+                }
               }
             } yield ps.getter.get(value)
           }
         }
       ).exec(JsonObject.empty)
     )
+  }
+  
+  implicit def coproductToJson[P[_]: ToJson, Q[_]: ToJson] = new ToJson[Coproduct[P, Q, ?]] {
+    val serialize = new (Coproduct[P, Q, ?] ~> (? => Json)) {
+      def apply[A](p: Coproduct[P, Q, A]): A => Json = {
+        p.run.fold(
+          implicitly[ToJson[P]].serialize(_),
+          implicitly[ToJson[Q]].serialize(_)
+        )
+      }
+    }
   }
 }

@@ -22,6 +22,8 @@ import argonaut.DecodeJson._
 
 import xenomorph.HMutu
 import xenomorph.Schema._
+import xenomorph.scalacheck.ToGen
+import xenomorph.scalacheck.ToGen._
 
 
 sealed trait JType[F[_], I]
@@ -96,5 +98,27 @@ object JType {
     }
 
     val sFromJ: FromJson[Schema[JSchema, ?]] = FromJson.schemaFromJson(self)
+  }
+
+  implicit val toGen: ToGen[JSchema] = new ToGen[JSchema] {
+    import org.scalacheck.Gen
+    import org.scalacheck.Gen._
+    import org.scalacheck.Arbitrary._
+    def toGen = new (JSchema ~> Gen) {
+      def apply[A](s: JSchema[A]): Gen[A] = s.unmutu match {
+        case _: JNullT[Schema[JSchema, ?]]    => arbitrary[Unit]
+        case _: JBoolT[Schema[JSchema, ?]]    => arbitrary[Boolean]
+        case _: JByteT[Schema[JSchema, ?]]    => arbitrary[Byte]
+        case _: JShortT[Schema[JSchema, ?]]   => arbitrary[Short]
+        case _: JIntT[Schema[JSchema, ?]]     => arbitrary[Int]
+        case _: JLongT[Schema[JSchema, ?]]    => arbitrary[Long]
+        case _: JFloatT[Schema[JSchema, ?]]   => arbitrary[Float]
+        case _: JDoubleT[Schema[JSchema, ?]]  => arbitrary[Double]
+        case _: JCharT[Schema[JSchema, ?]]    => arbitrary[Char]
+        case _: JStrT[Schema[JSchema, ?]]     => arbitrary[String]
+        case arr: JArrayT[Schema[JSchema, ?], i] => 
+          containerOf[Vector, i](arr.elem.toGen)
+      }
+    }
   }
 }

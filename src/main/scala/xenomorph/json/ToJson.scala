@@ -22,7 +22,6 @@ import scalaz.Coproduct
 import scalaz.State
 import scalaz.State._
 import scalaz.FreeAp
-import scalaz.syntax.monad._
 import scalaz.syntax.foldable._
 import scalaz.syntax.std.option._
 
@@ -82,16 +81,14 @@ object ToJson {
         new (PropSchema[I, ? => Json, ?] ~> State[JsonObject, ?]) {
           def apply[B](ps: PropSchema[I, ? => Json, B]): State[JsonObject, B] = {
             for {
-              obj <- get
-              _ <- ps match {
-                case req: Required[I, ? => Json, i] => //(field, base, getter, _) => 
-                  put(obj + (req.fieldName, req.base(req.getter.get(value))))
+              _ <- modify { (obj: JsonObject) => 
+                ps match {
+                  case req: Required[I, ? => Json, i] => //(field, base, getter, _) => 
+                    obj + (req.fieldName, req.base(req.getter.get(value)))
 
-                case opt: Optional[I, ? => Json, i] =>
-                  opt.getter.get(value).cata(
-                    v => put(obj + (opt.fieldName, opt.base(v))),
-                    ().pure[State[JsonObject, ?]]
-                  )
+                  case opt: Optional[I, ? => Json, i] =>
+                    opt.getter.get(value).cata(v => obj + (opt.fieldName, opt.base(v)), obj)
+                }
               }
             } yield ps.getter.get(value)
           }

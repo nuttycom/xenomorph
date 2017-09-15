@@ -18,8 +18,7 @@ import scalaz.NonEmptyList
 import scalaz.syntax.apply._
 
 import org.specs2._
-//import org.scalacheck._
-//import org.scalacheck.Gen._
+import org.scalacheck._
 
 import monocle.Iso
 import monocle.macros._
@@ -30,6 +29,7 @@ import xenomorph.Schema._
 import xenomorph.json.JType._
 import xenomorph.json.ToJson._
 import xenomorph.json.FromJson._
+import xenomorph.scalacheck.ToGen._
 
 @Lenses case class Person(
   name: String, 
@@ -48,13 +48,13 @@ object Administrator {
   val prism = GenPrism[Role, Administrator]
 }
 
-class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
+class JTypeSpec extends Specification with org.specs2.ScalaCheck {
   def is = s2"""
   Serialization of values to JSON should
     serialize a value to JSON $toJson
     read a value from JSON $fromJson
+    round-trip values produced by a generator $gen
   """
-//    round-trip values produced by a generator $gen
 
   type TProp[O, A] = Schema.Prop[JSchema, O, A]
 
@@ -89,25 +89,26 @@ class SchemaFSpec extends Specification with org.specs2.ScalaCheck {
     )(Person.apply _)
   )
 
-  def toJson = {
-    val p = Person(
-      "Kris Nuttycombe", 
-      new Instant(20147028000l), 
-      Vector(Administrator("windmill-tilting", 0))
-    )
+  val person = Person(
+    "Kris Nuttycombe", 
+    new Instant(20147028000l), 
+    Vector(Administrator("windmill-tilting", 0))
+  )
 
-    val result = personSchema.toJson(p) 
+  def toJson = {
+    val result = personSchema.toJson(person) 
     result.toString must_== """{"roles":[{"administrator":{"subordinateCount":0,"department":"windmill-tilting"}}],"birthDate":20147028000,"name":"Kris Nuttycombe"}"""
   }
 
   def fromJson = {
-    val p = Person(
-      "Kris Nuttycombe", 
-      new Instant(20147028000l), 
-      Vector(Administrator("windmill-tilting", 0))
-    )
+    val result = personSchema.toJson(person) 
+    personSchema.fromJson(result).toOption must_== Some(person)
+  }
 
-    val result = personSchema.toJson(p) 
-    personSchema.fromJson(result).toOption must_== Some(p)
+  def gen = {
+    implicit val arbPerson = Arbitrary(personSchema.toGen)
+    prop(
+      (p: Person) => personSchema.fromJson(personSchema.toJson(p)).toOption must_== Some(p)
+    )
   }
 }

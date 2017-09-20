@@ -14,15 +14,22 @@
  */
 package xenomorph
 
+import annotation.implicitNotFound
+
 import scalaz.~>
 import scalaz.Applicative
 import scalaz.NonEmptyList
 import scalaz.Profunctor
 import scalaz.FreeAp
+import scalaz.syntax.std.list._
 
 import monocle.Iso
 import monocle.Getter
 import monocle.Prism
+
+import shapeless._
+import shapeless.ops.hlist.{Align, Comapped, ToTraversable}
+import shapeless.ops.coproduct.ToHList
 
 import xenomorph.HFix._
 import xenomorph.HFunctor._
@@ -212,7 +219,7 @@ object Schema {
   def const[P[_], A](a: A): Schema[P, A] = 
     rec[P, A](FreeAp.pure[PropSchema[A, Schema[P, ?], ?], A](a))
 
-  /** Builds an un-annotated schema for the sum type `I` from a list of alternatives. 
+  /** Builds an un-annotated schema for the sum type `I` from an HList of alternatives. 
    *
    *  Each alternative value in the list describes a single constructor of `I`.
    *  For example, to construct the schema for [[scala.util.Either]] one would provide
@@ -221,13 +228,40 @@ object Schema {
    *  An easier-to-read type signature for this function is below:
    *
    *  {{{
-   *  def oneOf[P[_], I](alts: List[Alt[Schema[P, ?], I, _]]): Schema[P, I]
+   *  def oneOf[P[_], I](alts: NonEmptyList[Alt[Schema[P, ?], I, _]]): Schema[P, I]
    *  }}}
    *
    *  @tparam P $PDefn
    *  @tparam I $IDefn
    */
-  def oneOf[P[_], I](alts: NonEmptyList[Alt[Schema[P, ?], I, J] forSome {type J}]): Schema[P, I] = 
+  def oneOf[P[_], I]: ToOneOf[P, I] = new ToOneOf[P, I]
+  
+  /** Builder class used to construct a OneOfSchema value from
+   *  an HList of alternatives which are proven to provide handling for
+   *  every constructor of the sum type `I`.
+   */
+  final class ToOneOf[P[_], I] {
+    def apply[H <: HList](ctrs: H)(implicit ev: Constructors[I, Alt[Schema[P, ?], I, ?], H]): Schema[P, I] = {
+      schema(OneOfSchema[P, Schema[P, ?], I](ev.toNel(ctrs)))
+    }
+  }
+
+  /** Builds an un-annotated schema for the sum type `I` from a list of alternatives. 
+   *
+   *  Each alternative value in the list describes a single constructor of `I`.
+   *  For example, to construct the schema for [[scala.util.Either]] one would provide
+   *  two alternatives, one for the `Left` constructor and one for `Right`.
+   *
+   *  This convenience constructor is unsafe in that the compiler will not prove that 
+   *  handling is present for every constructor of your sum type; however, it may sometimes
+   *  be needed in the case that failures of the Scala compiler to correctly identify
+   *  all the constructors of a sum type make it otherwise impossible to build a schema
+   *  value.
+   *
+   *  @tparam P $PDefn
+   *  @tparam I $IDefn
+   */
+  def unsafeOneOf[P[_], I](alts: NonEmptyList[Alt[Schema[P, ?], I, J] forSome {type J}]): Schema[P, I] = 
     schema(OneOfSchema[P, Schema[P, ?], I](alts))
 
   /** Builds an annotated schema for the sum type `I` from a list of alternatives. 
@@ -282,6 +316,27 @@ object Schema {
   implicit class SchemaOps[P[_], I](base: Schema[P, I]) {
     def composeIso[J](iso: Iso[I, J]): Schema[P, J] = {
       schema(IsoSchema[P, Schema[P, ?], I, J](base, iso))
+    }
+  }
+}
+
+/** Implicit proof type 
+ * 
+ */
+@implicitNotFound(msg = "Cannot prove the completeness of your oneOf definition; you may have not provided an alternative for each constructor of your sum type ${I}")
+sealed trait Constructors[I, F[_], H <: HList] { 
+  def toNel(h: H): NonEmptyList[F[I0] forSome { type I0 }]
+}
+
+object Constructors {
+  implicit def evidence[I, F[_], C <: Coproduct, H0 <: HList, H1 <: HList, H <: HList](implicit 
+    G: Generic.Aux[I, C], 
+    L: ToHList.Aux[C, H1], 
+    M: Comapped.Aux[H, F, H0], 
+    A: Align[H0, H1],
+    T: ToTraversable.Aux[H, List, F[X] forSome { type X }]): Constructors[I, F, H] = new Constructors[I, F, H] {
+    def toNel(h: H): NonEmptyList[F[I0] forSome { type I0 }] = {
+      h.toList.toNel.get
     }
   }
 }

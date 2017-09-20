@@ -1,6 +1,5 @@
 package xenomorph
 
-import scalaz.NonEmptyList
 import scalaz.syntax.apply._
 
 import monocle.Iso
@@ -10,6 +9,8 @@ import org.joda.time.Instant
 
 import xenomorph.Schema._
 import xenomorph.json.JType._
+
+import shapeless.HNil
 
 package samples {
   @Lenses case class Person(
@@ -35,23 +36,21 @@ package samples {
 
   object Role {
     val schema: Schema[JSchema, Role] = Schema.oneOf(
-      NonEmptyList(
-        alt[JSchema, Role, User.type](
-          "user", 
-          Schema.const(User),
-          User.prism
+      alt[JSchema, Role, User.type](
+        "user", 
+        Schema.const(User),
+        User.prism
+      ) ::
+      alt[JSchema, Role, Administrator](
+        "administrator", 
+        rec(
+          ^(
+            required("department", jStr, Administrator.department.asGetter),
+            required("subordinateCount", jInt, Administrator.subordinateCount.asGetter)
+          )(Administrator.apply _)
         ),
-        alt[JSchema, Role, Administrator](
-          "administrator", 
-          rec(
-            ^(
-              required("department", jStr, Administrator.department.asGetter),
-              required("subordinateCount", jInt, Administrator.subordinateCount.asGetter)
-            )(Administrator.apply _)
-          ),
-          Administrator.prism
-        )
-      )
+        Administrator.prism
+      ) :: HNil
     )
   }
 

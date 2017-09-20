@@ -75,23 +75,21 @@ the `Unit` schema constructor.
 
 ~~~scala
 val roleSchema: Schema[JSchema, Role] = Schema.oneOf(
-  NonEmptyList(
-    alt[JSchema, Role, User.type](
-      "user", 
-      Schema.const(User),
-      User.prism
+  alt[JSchema, Role, User.type](
+    "user", 
+    Schema.const(User),
+    User.prism
+  ) ::
+  alt[JSchema, Role, Administrator](
+    "administrator", 
+    rec(
+      ^(
+        required("department", jStr, Administrator.department.asGetter),
+        required("subordinateCount", jInt, Administrator.subordinateCount.asGetter)
+      )(Administrator.apply _)
     ),
-    alt[JSchema, Role, Administrator](
-      "administrator", 
-      rec(
-        ^(
-          required("department", jStr, Administrator.department.asGetter),
-          required("subordinateCount", jInt, Administrator.subordinateCount.asGetter)
-        )(Administrator.apply _)
-      ),
-      Administrator.prism
-    )
-  )
+    Administrator.prism
+  ) :: shapeless.HNil
 )
 ~~~
 
@@ -117,6 +115,6 @@ val personGen: Gen[Person] = personSchema.toGen
 
 Contributors
 ------------
-Kris Nuttycombe
+Kris Nuttycombe (\@nuttycom)
 Antonio Alonso Dominguez
 Doug Clinton

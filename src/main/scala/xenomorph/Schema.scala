@@ -14,6 +14,8 @@
  */
 package xenomorph
 
+import annotation.implicitNotFound
+
 import scalaz.~>
 import scalaz.Applicative
 import scalaz.NonEmptyList
@@ -23,6 +25,10 @@ import scalaz.FreeAp
 import monocle.Iso
 import monocle.Getter
 import monocle.Prism
+
+import shapeless._
+import shapeless.ops.hlist.{Align, Comapped}
+import shapeless.ops.coproduct.ToHList
 
 import xenomorph.HFix._
 import xenomorph.HFunctor._
@@ -212,6 +218,12 @@ object Schema {
   def const[P[_], A](a: A): Schema[P, A] = 
     rec[P, A](FreeAp.pure[PropSchema[A, Schema[P, ?], ?], A](a))
 
+  final class ToOneOf[P[_], I] {
+    def apply[H <: HList](ctrs: H)(implicit ev: Constructors[I, Alt[Schema[P, ?], I, ?], H]): Schema[P, I] = {
+      ???
+    }
+  }
+
   /** Builds an un-annotated schema for the sum type `I` from a list of alternatives. 
    *
    *  Each alternative value in the list describes a single constructor of `I`.
@@ -227,9 +239,10 @@ object Schema {
    *  @tparam P $PDefn
    *  @tparam I $IDefn
    */
-  def oneOf[P[_], I](alts: NonEmptyList[Alt[Schema[P, ?], I, J] forSome {type J}]): Schema[P, I] = 
-    schema(OneOfSchema[P, Schema[P, ?], I](alts))
-
+  //def oneOf[P[_], I](alts: NonEmptyList[Alt[Schema[P, ?], I, J] forSome {type J}]): Schema[P, I] = 
+  //  schema(OneOfSchema[P, Schema[P, ?], I](alts))
+  def oneOf[P[_], I]: ToOneOf[P, I] = new ToOneOf[P, I]
+  
   /** Builds an annotated schema for the sum type `I` from a list of alternatives. 
    *
    *  Each alternative value in the list describes a single constructor of `I`.
@@ -284,5 +297,19 @@ object Schema {
       schema(IsoSchema[P, Schema[P, ?], I, J](base, iso))
     }
   }
+}
+
+/** Implicit proof type 
+ * 
+ */
+@implicitNotFound(msg = "Cannot prove the completeness of your oneOf definition; you may have not provided an alternative for each constructor of your sum type ${I}")
+sealed trait Constructors[I, F[_], H <: HList] { }
+
+object Constructors {
+  implicit def evidence[I, F[_], C <: Coproduct, H0 <: HList, H1 <: HList, H <: HList](implicit 
+    G: Generic.Aux[I, C], 
+    L: ToHList.Aux[C, H1], 
+    M: Comapped.Aux[H, F, H0], 
+    A: Align[H0, H1]): Constructors[I, F, H] = new Constructors[I, F, H] {}
 }
 

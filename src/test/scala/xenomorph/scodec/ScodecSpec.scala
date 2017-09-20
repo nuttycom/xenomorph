@@ -17,35 +17,34 @@ package xenomorph
 import org.specs2._
 import org.scalacheck._
 
-import xenomorph.json.JType._
-import xenomorph.json.ToJson._
-import xenomorph.json.FromJson._
+import _root_.scodec.Attempt
+import _root_.scodec.bits.BitVector
+
+import xenomorph.scodec.ToEncoder._
+import xenomorph.scodec.ToDecoder._
 import xenomorph.scalacheck.ToGen._
 
 import xenomorph.samples._
 
-class JTypeSpec extends Specification with org.specs2.ScalaCheck {
+class ScodecSpec extends Specification with org.specs2.ScalaCheck {
   def is = s2"""
-  Serialization of values to JSON should
-    serialize a value to JSON $toJson
-    read a value from JSON $fromJson
+  Serialization of values to binary should
     round-trip values produced by a generator $gen
   """
 
-  def toJson = {
-    val result = Person.schema.toJson(person) 
-    result.toString must_== """{"roles":[{"administrator":{"subordinateCount":0,"department":"windmill-tilting"}}],"birthDate":20147028000,"name":"Kris Nuttycombe"}"""
-  }
-
-  def fromJson = {
-    val result = Person.schema.toJson(person) 
-    Person.schema.fromJson(result).toOption must_== Some(person)
-  }
-
   def gen = {
-    implicit val arbPerson = Arbitrary(Person.schema.toGen)
+    val schema = Person.schema
+    implicit val arbPerson = Arbitrary(schema.toGen)
     prop(
-      (p: Person) => Person.schema.fromJson(Person.schema.toJson(p)).toOption must_== Some(p)
+      (p: Person) => {
+        val res = for {
+          enc <- schema.toEncoder.encode(p)
+          dec <- schema.toDecoder.decode(enc)
+        } yield dec
+
+        (res.map(_.value) must_== Attempt.successful(p)) and
+        (res.map(_.remainder) must_== Attempt.successful(BitVector.empty))
+      }
     )
   }
 }

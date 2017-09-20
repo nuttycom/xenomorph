@@ -114,3 +114,9 @@ val parsedPerson: Option[Person] = personSchema.fromJson(personJson).toOption
 
 val personGen: Gen[Person] = personSchema.toGen
 ~~~
+
+Contributors
+------------
+Kris Nuttycombe
+Antonio Alonso Dominguez
+Doug Clinton

@@ -116,5 +116,7 @@ val personGen: Gen[Person] = personSchema.toGen
 Contributors
 ------------
 Kris Nuttycombe (\@nuttycom)
+
 Antonio Alonso Dominguez
+
 Doug Clinton

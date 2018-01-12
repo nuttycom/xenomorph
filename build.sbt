@@ -16,17 +16,18 @@ lazy val core = project.in(file("modules/core"))
   .settings(
     name := "xenomorph-core",
     libraryDependencies ++= Seq(
-      "org.scalaz" %% "scalaz-core" % "7.2.14",
-      "com.chuusai" %% "shapeless" % "2.3.2",
-      "com.github.julien-truffaut"  %%  "monocle-core"    % monocleVersion,
-      "com.github.julien-truffaut"  %%  "monocle-generic" % monocleVersion,
-      "com.github.julien-truffaut"  %%  "monocle-macro"   % monocleVersion,
-      "com.github.julien-truffaut"  %%  "monocle-state"   % monocleVersion,
-      "com.github.julien-truffaut"  %%  "monocle-refined" % monocleVersion,
-      "com.github.julien-truffaut"  %%  "monocle-law"     % monocleVersion % "test",
-      "joda-time" % "joda-time" % "2.9.4" % "test",
-      "org.specs2"     %% "specs2-core" % "3.9.4"  % "test",
-      "org.specs2"     %% "specs2-scalacheck" % "3.9.4"  % "test"
+      "org.scalaz"                    %% "scalaz-core"     % "7.2.14",
+      "com.chuusai"                   %% "shapeless"       % "2.3.2",
+      "com.github.julien-truffaut"    %% "monocle-core"    % monocleVersion,
+      // test dependencies
+      "com.github.julien-truffaut"  %%  "monocle-generic"  % monocleVersion % "test",
+      "com.github.julien-truffaut"  %%  "monocle-macro"    % monocleVersion % "test",
+      "com.github.julien-truffaut"  %%  "monocle-state"    % monocleVersion % "test",
+      "com.github.julien-truffaut"  %%  "monocle-refined"  % monocleVersion % "test",
+      "com.github.julien-truffaut"  %%  "monocle-law"      % monocleVersion % "test",
+      "joda-time"                   % "joda-time"          % "2.9.4"        % "test",
+      "org.specs2"                  %% "specs2-core"       % "3.9.4"        % "test",
+      "org.specs2"                  %% "specs2-scalacheck" % "3.9.4"        % "test"
     )
   )
 

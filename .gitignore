@@ -1,2 +1,7 @@
-project/target
-target
+# sbt specific
+target/
+
+# editors specific
+.scala_dependencies
+.worksheet
+.idea

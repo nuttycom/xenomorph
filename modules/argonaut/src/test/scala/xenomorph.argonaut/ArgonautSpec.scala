@@ -15,16 +15,11 @@
 package xenomorph.argonaut
 
 import org.scalacheck._
-import org.specs2._
+import org.scalatest.FunSuite
+import org.scalatest.prop.Checkers
 import xenomorph.samples._
 
-class ArgonautSpec extends Specification with org.specs2.ScalaCheck {
-  def is = s2"""
-  Serialization of values to JSON should
-    serialize a value to JSON $toJson
-    read a value from JSON $fromJson
-    round-trip values produced by a generator $gen
-  """
+class ArgonautSpec extends FunSuite with Checkers {
 
   import xenomorph.scalacheck.ToGen._
   import xenomorph.scalacheck.Implicits._
@@ -32,21 +27,23 @@ class ArgonautSpec extends Specification with org.specs2.ScalaCheck {
   import xenomorph.argonaut.ToJson._
   import xenomorph.argonaut.FromJson._
 
-  def toJson = {
+  test("A value should serialise to JSON") {
     val result = Person.schema.toJson(person)
-    result.toString must_== """{"roles":[{"administrator":{"subordinateCount":0,"department":"windmill-tilting"}}],"birthDate":20147028000,"name":"Kris Nuttycombe"}"""
+    assert(result.toString == """{"roles":[{"administrator":{"subordinateCount":0,"department":"windmill-tilting"}}],"birthDate":20147028000,"name":"Kris Nuttycombe"}""")
   }
 
-  def fromJson = {
+  test("A value should be deserialised from JSON"){
     val result = Person.schema.toJson(person)
-    Person.schema.fromJson(result).toOption must_== Some(person)
+    assert(Person.schema.fromJson(result).toOption == Some(person))
   }
 
-  def gen = {
+
+  test("Serialization should round-trip values produced by a generator"){
     implicit val arbPerson : Arbitrary[Person] = Arbitrary(Person.schema.toGen)
-    prop(
+    check{
       (p: Person) =>
-        Person.schema.fromJson(Person.schema.toJson(p)).toOption must_== Some(p)
-    )
+        Person.schema.fromJson(Person.schema.toJson(p)).toOption == Some(p)
+    }
   }
+
 }

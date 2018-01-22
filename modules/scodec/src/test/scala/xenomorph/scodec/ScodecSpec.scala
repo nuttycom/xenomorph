@@ -16,17 +16,14 @@ package xenomorph.scodec
 
 import _root_.scodec.Attempt
 import _root_.scodec.bits.BitVector
-import org.scalacheck._
-import org.specs2._
+import org.scalacheck.Arbitrary
+import org.scalatest.FunSuite
+import org.scalatest.prop.Checkers
 import xenomorph.Schema.Schema
 import xenomorph.json.JType.JSchema
-import xenomorph.samples._
+import xenomorph.samples.Person
 
-class ScodecSpec extends Specification with org.specs2.ScalaCheck {
-  def is = s2"""
-  Serialization of values to binary should
-    round-trip values produced by a generator $gen
-  """
+class ScodecSpec extends FunSuite with Checkers {
 
   import xenomorph.scalacheck.ToGen._
   import xenomorph.scalacheck.Implicits._
@@ -34,19 +31,22 @@ class ScodecSpec extends Specification with org.specs2.ScalaCheck {
   import xenomorph.scodec.ToDecoder._
   import xenomorph.scodec.Implicits._
 
-  def gen = {
+  test("Serialization of values to binary should round-trip values produced by a generator"){
+
     val schema: Schema[JSchema, Person] = Person.schema
-    implicit val arbPerson: Arbitrary[Person] = Arbitrary(schema.toGen)
-    prop(
+    implicit val arbPerson : Arbitrary[Person] = Arbitrary(schema.toGen)
+
+    check(
       (p: Person) => {
         val res = for {
           enc <- schema.toEncoder.encode(p)
           dec <- schema.toDecoder.decode(enc)
         } yield dec
 
-        (res.map(_.value) must_== Attempt.successful(p)) and
-          (res.map(_.remainder) must_== Attempt.successful(BitVector.empty))
+        (res.map(_.value) == Attempt.successful(p)) &&
+          (res.map(_.remainder) == Attempt.successful(BitVector.empty))
       }
     )
   }
+
 }

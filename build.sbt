@@ -1,66 +1,97 @@
 import sbt.Keys.scalaVersion
 import sbt._
+import sbtcrossproject.{CrossType, crossProject}
 
 val monocleVersion = "1.4.0"
 
-lazy val xenomorph = project.in(file("."))
-  .dependsOn(core, argonaut, scalacheck, scodec)
-  .aggregate(core, argonaut, scalacheck, scodec)
+lazy val xenomorph = project
+  .in(file("."))
+  .aggregate(
+    coreJVM, coreJS,
+    scalacheckJVM, scalacheckJS,
+    argonautJVM, argonautJS,
+    scodecJVM
+  )
   .settings(commonSettings)
   .settings(
-    name := "xenomorph"
+    name := "xenomorph",
+    publish := {},
+    publishLocal := {}
   )
 
-lazy val core = project.in(file("modules/core"))
+lazy val core = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("modules/core"))
   .settings(commonSettings)
   .settings(
     name := "xenomorph-core",
     libraryDependencies ++= Seq(
-      "org.scalaz"                    %% "scalaz-core"     % "7.2.14",
-      "com.chuusai"                   %% "shapeless"       % "2.3.2",
-      "com.github.julien-truffaut"    %% "monocle-core"    % monocleVersion,
+      "org.scalaz"                    %%% "scalaz-core"     % "7.2.18",
+      "com.chuusai"                   %%% "shapeless"       % "2.3.2",
+      "com.github.julien-truffaut"    %%% "monocle-core"    % monocleVersion,
       // test dependencies
-      "com.github.julien-truffaut"  %%  "monocle-generic"  % monocleVersion % "test",
-      "com.github.julien-truffaut"  %%  "monocle-macro"    % monocleVersion % "test",
-      "com.github.julien-truffaut"  %%  "monocle-state"    % monocleVersion % "test",
-      "com.github.julien-truffaut"  %%  "monocle-refined"  % monocleVersion % "test",
-      "com.github.julien-truffaut"  %%  "monocle-law"      % monocleVersion % "test",
-      "joda-time"                   % "joda-time"          % "2.9.4"        % "test",
-      "org.specs2"                  %% "specs2-core"       % "3.9.4"        % "test",
-      "org.specs2"                  %% "specs2-scalacheck" % "3.9.4"        % "test"
+      "com.github.julien-truffaut"  %%%  "monocle-generic"  % monocleVersion % "test",
+      "com.github.julien-truffaut"  %%%  "monocle-macro"    % monocleVersion % "test",
+      "com.github.julien-truffaut"  %%%  "monocle-state"    % monocleVersion % "test",
+      "com.github.julien-truffaut"  %%%  "monocle-refined"  % monocleVersion % "test",
+      "com.github.julien-truffaut"  %%%  "monocle-law"      % monocleVersion % "test",
+      "org.scalatest"               %%% "scalatest"         % "3.0.4"        % "test",
+      "org.scalacheck"              %%% "scalacheck"        % "1.13.4"       % "test"
+    )
+  )
+  .jsSettings(
+    libraryDependencies ++= Seq(
+      "org.scala-js" %%% "scalajs-java-time" % "0.2.3" % "test"
     )
   )
 
-lazy val argonaut = project.in(file("modules/argonaut"))
+lazy val coreJVM = core.jvm
+lazy val coreJS = core.js
+
+lazy val argonaut = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("modules/argonaut"))
   .dependsOn(core % "compile->compile;test->test", scalacheck % "test->test")
   .settings(commonSettings)
   .settings(
     name := "xenomorph-argonaut",
     libraryDependencies ++= Seq(
-      "io.argonaut" %% "argonaut" % "6.2"
+      "io.argonaut" %%% "argonaut" % "6.2.1"
     )
   )
 
-lazy val scodec = project.in(file("modules/scodec"))
+lazy val argonautJVM = argonaut.jvm
+lazy val argonautJS = argonaut.js
+
+lazy val scodec = crossProject(JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("modules/scodec"))
   .dependsOn(core % "compile->compile;test->test", scalacheck % "test->test")
   .settings(commonSettings)
   .settings(
     name := "xenomorph-scodec",
     libraryDependencies ++= Seq(
-      "org.scodec" %% "scodec-core" % "1.10.3",
-      "org.scodec" %% "scodec-scalaz" % "1.4.1a"
+      "org.scodec" %%% "scodec-core" % "1.10.3",
+      "org.scodec" %%% "scodec-scalaz" % "1.4.1a"
     )
   )
 
-lazy val scalacheck = project.in(file("modules/scalacheck"))
+lazy val scodecJVM = scodec.jvm
+
+lazy val scalacheck = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("modules/scalacheck"))
   .dependsOn(core % "compile->compile;test->test")
   .settings(commonSettings)
   .settings(
     name := "xenomorph-scalacheck",
     libraryDependencies ++= Seq(
-      "org.scalacheck" %% "scalacheck"  % "1.13.5"
+      "org.scalacheck" %%% "scalacheck"  % "1.13.5"
     )
   )
+
+lazy val scalacheckJVM = scalacheck.jvm
+lazy val scalacheckJS = scalacheck.js
 
 
 lazy val commonSettings = Seq(

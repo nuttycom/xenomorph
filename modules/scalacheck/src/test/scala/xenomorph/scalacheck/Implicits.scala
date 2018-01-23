@@ -19,7 +19,7 @@ object Implicits {
         case JByteT()   => arbitrary[Byte]
         case JShortT()  => arbitrary[Short]
         case JIntT()    => arbitrary[Int]
-        case JLongT()   => arbitrary[Long]
+        case JLongT()   => Gen.chooseNum(Long.MinValue + 808L, Long.MaxValue) // Magic number to circumvent Instant#toEpochMillis throwing exceptions
         case JFloatT()  => arbitrary[Float]
         case JDoubleT() => arbitrary[Double]
         case JCharT()   => arbitrary[Char]

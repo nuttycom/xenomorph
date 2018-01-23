@@ -1,18 +1,17 @@
 package xenomorph
 
-import scalaz.syntax.apply._
+import java.time.Instant
 
 import monocle.Iso
 import monocle.macros._
-
-import org.joda.time.Instant
-
+import shapeless.HNil
 import xenomorph.Schema._
 import xenomorph.json.JType._
 
-import shapeless.HNil
+import scalaz.syntax.apply._
 
 package samples {
+
   @Lenses case class Person(
     name: String,
     birthDate: Instant,
@@ -20,11 +19,12 @@ package samples {
   )
 
   object Person {
+
     val schema: Schema[JSchema, Person] = rec(
       ^^(
         required("name", jStr, Person.name.asGetter),
         required(
-          "birthDate", jLong.composeIso(Iso(new Instant(_:Long))((_:Instant).getMillis)),
+          "birthDate", jLong.composeIso(Iso(Instant.ofEpochMilli(_:Long))((_ : Instant).toEpochMilli)),
           Person.birthDate.asGetter
         ),
         required("roles", jArray(Role.schema), Person.roles.asGetter)
@@ -67,7 +67,7 @@ package samples {
 package object samples {
   val person = Person(
     "Kris Nuttycombe",
-    new Instant(20147028000l),
+    Instant.ofEpochMilli(20147028000l),
     Vector(Administrator("windmill-tilting", 0))
   )
 }

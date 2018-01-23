@@ -39,6 +39,11 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       "org.scalacheck"              %%% "scalacheck"        % "1.13.4"       % "test"
     )
   )
+  .jsSettings(
+    libraryDependencies ++= Seq(
+      "org.scala-js" %%% "scalajs-java-time" % "0.2.3" % "test"
+    )
+  )
 
 lazy val coreJVM = core.jvm
 lazy val coreJS = core.js

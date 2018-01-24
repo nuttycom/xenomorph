@@ -17,7 +17,6 @@ package xenomorph.scodec
 import scodec._
 import scodec.bits._
 import scodec.codecs.implicits._
-import scodec.interop.scalaz._
 
 import scalaz.~>
 import scalaz.StateT

@@ -10,7 +10,7 @@ lazy val xenomorph = project
     coreJVM, coreJS,
     scalacheckJVM, scalacheckJS,
     argonautJVM, argonautJS,
-    scodecJVM
+    scodecJVM, scodecJS
   )
   .settings(commonSettings)
   .settings(
@@ -63,7 +63,7 @@ lazy val argonaut = crossProject(JVMPlatform, JSPlatform)
 lazy val argonautJVM = argonaut.jvm
 lazy val argonautJS = argonaut.js
 
-lazy val scodec = crossProject(JVMPlatform)
+lazy val scodec = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Pure)
   .in(file("modules/scodec"))
   .dependsOn(core % "compile->compile;test->test", scalacheck % "test->test")
@@ -71,12 +71,12 @@ lazy val scodec = crossProject(JVMPlatform)
   .settings(
     name := "xenomorph-scodec",
     libraryDependencies ++= Seq(
-      "org.scodec" %%% "scodec-core" % "1.10.3",
-      "org.scodec" %%% "scodec-scalaz" % "1.4.1a"
+      "org.scodec" %%% "scodec-core" % "1.10.3"
     )
   )
 
 lazy val scodecJVM = scodec.jvm
+lazy val scodecJS = scodec.js
 
 lazy val scalacheck = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Pure)

@@ -2,7 +2,6 @@ package xenomorph
 
 import java.time.Instant
 
-import monocle.Iso
 import monocle.macros._
 import shapeless.HNil
 import xenomorph.Schema._
@@ -12,7 +11,14 @@ import scalaz.syntax.apply._
 
 package samples {
 
+  import monocle.{Iso, Prism}
+
+  import scala.util.Try
+
+  case class PersonId(id: Long) extends AnyVal
+
   @Lenses case class Person(
+    id: PersonId,
     name: String,
     birthDate: Instant,
     roles: Vector[Role]
@@ -20,13 +26,19 @@ package samples {
 
   object Person {
 
+    def instantPrism: Prism[Long, Instant] =
+      Prism[Long, Instant](x => Try(Instant.ofEpochMilli(x)).toOption)(_.toEpochMilli)
+
+    def personIdIso: Iso[Long, PersonId] =
+      Iso[Long, PersonId](PersonId.apply)(_.id)
+
+    val jInstant = jLong.composePrism(instantPrism)
+
     val schema: Schema[JSchema, Person] = rec(
-      ^^(
-        required("name", jStr, Person.name.asGetter),
-        required(
-          "birthDate", jLong.composeIso(Iso(Instant.ofEpochMilli(_:Long))((_ : Instant).toEpochMilli)),
-          Person.birthDate.asGetter
-        ),
+      (
+        required("personId", jLong.composeIso(personIdIso), Person.id.asGetter) |@|
+        required("name", jStr, Person.name.asGetter) |@|
+        required("birthDate", jInstant, Person.birthDate.asGetter) |@|
         required("roles", jArray(Role.schema), Person.roles.asGetter)
       )(Person.apply)
     )
@@ -66,6 +78,7 @@ package samples {
 
 package object samples {
   val person = Person(
+    PersonId(1),
     "Kris Nuttycombe",
     Instant.ofEpochMilli(20147028000l),
     Vector(Administrator("windmill-tilting", 0))

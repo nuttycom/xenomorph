@@ -41,6 +41,7 @@ object ToGen {
 
         case s: RecordSchema[P, Gen, I] => recordGen[P,I](s.props)
         case s: IsoSchema[P, Gen, i0, I] => s.base.map(s.iso.get(_))
+        case s: PrismSchema[P, Gen, i0, I] => s.base.flatMap(x => Gen.fromOption(s.prism.getOption(x)))
       }
     }
 

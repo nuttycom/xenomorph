@@ -69,6 +69,7 @@ object ToEncoder {
           )
         case s: RecordSchema[P, Encoder, I] => recordEncoder[P, I](s.props)
         case s: IsoSchema[P, Encoder, i0, I] => Encoder((value: I) => s.base.encode(s.iso.reverseGet(value)))
+        case s: PrismSchema[P, Encoder, i0, I] => Encoder((value: I) => s.base.encode(s.prism.reverseGet(value)))
       }
     }
 
@@ -133,6 +134,7 @@ object ToDecoder {
 
         case s: RecordSchema[P, Decoder, I] => recordDecoder[P, I](s.props)
         case s: IsoSchema[P, Decoder, i0, I] => s.base.map(s.iso.get(_))
+        case s: PrismSchema[P, Decoder, i0, I] => s.base.flatMap(x => Decoder.liftAttempt(Attempt.fromOption(s.prism.getOption(x), Err("Decode error"))))
       }
     }
 

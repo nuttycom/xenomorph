@@ -29,7 +29,7 @@ class ArgonautSpec extends FunSuite with Checkers {
 
   test("A value should serialise to JSON") {
     val result = Person.schema.toJson(person)
-    assert(result.toString == """{"roles":[{"administrator":{"subordinateCount":0,"department":"windmill-tilting"}}],"birthDate":20147028000,"name":"Kris Nuttycombe"}""")
+    assert(result.toString == """{"roles":[{"administrator":{"subordinateCount":0,"department":"windmill-tilting"}}],"birthDate":20147028000,"name":"Kris Nuttycombe","personId":1}""")
   }
 
   test("A value should be deserialised from JSON"){

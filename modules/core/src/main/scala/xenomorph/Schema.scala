@@ -251,6 +251,9 @@ object Schema {
     def composeIso[J](iso: Iso[I, J]): Schema[P, J] = {
       schema(IsoSchema[P, Schema[P, ?], I, J](base, iso))
     }
+    def composePrism[J](prism: Prism[I, J]): Schema[P, J] = {
+      schema(PrismSchema[P, Schema[P, ?], I, J](base, prism))
+    }
   }
 }
 

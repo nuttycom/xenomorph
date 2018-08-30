@@ -79,6 +79,9 @@ object FromJson {
 
         case IsoSchema(base, iso) =>
           base.map(iso.get)
+
+        case PrismSchema(base, prism) =>
+          base.flatMap(a => DecodeJson(h => prism.getOption(a).fold[DecodeResult[I]](DecodeResult.fail("Unable to decode", h.history))(DecodeResult.ok)))
       }
   }
 

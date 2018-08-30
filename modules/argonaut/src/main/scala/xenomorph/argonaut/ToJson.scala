@@ -71,6 +71,9 @@ object ToJson {
 
           case s: IsoSchema[P, ? => Json, i0, I] =>
             s.base.compose(s.iso.reverseGet(_))
+
+          case s: PrismSchema[P, ? => Json, i0, I] =>
+            s.base.compose(s.prism.reverseGet(_))
         }
       }
     }

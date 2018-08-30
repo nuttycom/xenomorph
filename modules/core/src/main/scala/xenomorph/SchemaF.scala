@@ -284,3 +284,8 @@ case class IsoSchema[P[_], F[_], I, J](base: F[I], iso: Iso[I, J]) extends Schem
   def hfmap[G[_]](nt: F ~> G) = IsoSchema(nt(base), iso)
   def pmap[Q[_]](nt: P ~> Q) = IsoSchema(base, iso)
 }
+
+case class PrismSchema[P[_], F[_], I, J](base: F[I], prism: Prism[I, J]) extends SchemaF[P, F, J] {
+  def hfmap[G[_]](nt: F ~> G) = PrismSchema(nt(base), prism)
+  def pmap[Q[_]](nt: P ~> Q) = PrismSchema(base, prism)
+}
